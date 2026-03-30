@@ -34,7 +34,8 @@ case "$OS_ID" in
     pkg_install() { yum install -y "$@"; }
     install_build_deps() {
       yum groupinstall -y "Development Tools"
-      yum install -y pcre-devel pcre2-devel zlib-devel openssl-devel wget make
+      yum install -y pcre-devel zlib-devel openssl-devel wget make 2>/dev/null || \
+        yum install -y pcre2-devel zlib-devel openssl-devel wget make
     }
     ;;
   fedora)
@@ -42,7 +43,8 @@ case "$OS_ID" in
     pkg_install() { dnf install -y "$@"; }
     install_build_deps() {
       dnf groupinstall -y "Development Tools"
-      dnf install -y pcre-devel pcre2-devel zlib-devel openssl-devel wget make
+      dnf install -y pcre-devel zlib-devel openssl-devel wget make 2>/dev/null || \
+        dnf install -y pcre2-devel zlib-devel openssl-devel wget make
     }
     ;;
   arch|manjaro)
@@ -56,7 +58,8 @@ case "$OS_ID" in
     pkg_update()  { apk update; }
     pkg_install() { apk add "$@"; }
     install_build_deps() {
-      apk add gcc g++ make pcre-dev pcre2-dev zlib-dev openssl-dev wget
+      apk add gcc g++ make zlib-dev openssl-dev wget
+      apk add pcre-dev 2>/dev/null || apk add pcre2-dev
     }
     ;;
   opensuse*|sles)
@@ -64,7 +67,7 @@ case "$OS_ID" in
     pkg_install() { zypper install -y "$@"; }
     install_build_deps() {
       zypper install -y -t pattern devel_basis
-      zypper install -y pcre-devel pcre2-devel zlib-devel libopenssl-devel wget make
+      zypper install -y pcre2-devel zlib-devel libopenssl-devel wget make
     }
     ;;
   *)
@@ -185,6 +188,7 @@ info "编译 Nginx ${NGINX_VER} ..."
   --prefix=/usr/local/nginx \
   --sbin-path=/usr/sbin/nginx \
   --conf-path=/etc/nginx/nginx.conf \
+  --with-cc-opt="-Wno-error" \
   --with-http_stub_status_module \
   --with-http_ssl_module \
   --with-http_realip_module \
