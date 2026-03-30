@@ -54,9 +54,11 @@ bash -c "$(curl -L https://github.com/XTLS/Xray-install/raw/main/install-release
 info "生成参数..."
 UUID1=$(xray uuid)
 UUID2=$(xray uuid)
-KEY_OUTPUT=$(xray x25519)
-PRIVATE_KEY=$(echo "$KEY_OUTPUT" | grep "Private key:" | awk '{print $3}')
-PUBLIC_KEY=$(echo "$KEY_OUTPUT" | grep "Public key:" | awk '{print $3}')
+KEY_OUTPUT=$(xray x25519 2>&1)
+PRIVATE_KEY=$(echo "$KEY_OUTPUT" | grep -i "private" | awk -F': ' '{print $2}' | tr -d '[:space:]')
+PUBLIC_KEY=$(echo "$KEY_OUTPUT" | grep -i "public" | awk -F': ' '{print $2}' | tr -d '[:space:]')
+[[ -z "$PRIVATE_KEY" ]] && error "未能提取 Private Key，xray x25519 输出: $KEY_OUTPUT"
+[[ -z "$PUBLIC_KEY" ]] && error "未能提取 Public Key，xray x25519 输出: $KEY_OUTPUT"
 SHORT_ID=$(echo "$UUID1" | tr -d '-' | cut -c1-8)
 XHTTP_PATH="/$(echo "$UUID2" | tr -d '-' | cut -c1-8)"
 VPS_IP=$(curl -4 -s ip.sb)
