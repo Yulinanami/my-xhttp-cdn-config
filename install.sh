@@ -103,7 +103,26 @@ echo ""
 info "[1/6] 安装基础环境"
 
 pkg_update
-pkg_install curl sudo socat cron
+
+case "$OS_ID" in
+  debian|ubuntu|linuxmint|kali|armbian)
+    pkg_install curl sudo socat cron
+    ;;
+  centos|rhel|almalinux|rocky|ol|amzn|fedora)
+    pkg_install curl sudo socat cronie
+    systemctl enable --now crond 2>/dev/null || true
+    ;;
+  arch|manjaro)
+    pkg_install curl sudo socat cronie
+    systemctl enable --now cronie 2>/dev/null || true
+    ;;
+  alpine)
+    pkg_install curl sudo socat openrc
+    ;;
+  opensuse*|sles)
+    pkg_install curl sudo socat cron
+    ;;
+esac
 
 info "安装 Xray..."
 bash -c "$(curl -L https://github.com/XTLS/Xray-install/raw/main/install-release.sh)" @ install -u root
@@ -177,8 +196,52 @@ make install
 cd /tmp && rm -rf "nginx-${NGINX_VER}" "nginx-${NGINX_VER}.tar.gz"
 mkdir -p /var/log/nginx
 
-info "创建 systemd 服务..."
-cat > /etc/systemd/system/nginx.service << 'SERVICEEOF'
+if [[ "$OS_ID" == "alpine" ]]; then
+  info "创建 OpenRC 服务..."
+  cat > /etc/init.d/nginx << 'INITEOF'
+#!/sbin/openrc-run
+name="nginx"
+description="Nginx HTTP Server"
+command="/usr/sbin/nginx"
+command_args="-g 'daemon on; master_process on;'"
+pidfile="/run/nginx.pid"
+
+depend() {
+    need net
+    use dns
+}
+
+start_pre() {
+    $command -t -q
+}
+
+reload() {
+    ebegin "Reloading $name"
+    start-stop-daemon --signal HUP --pidfile $pidfile
+    eend $?
+}
+INITEOF
+  chmod +x /etc/init.d/nginx
+  rc-update add nginx default
+
+  cat > /etc/init.d/xray << 'XRAYINITEOF'
+#!/sbin/openrc-run
+name="xray"
+description="Xray Service"
+command="/usr/local/bin/xray"
+command_args="run -config /usr/local/etc/xray/config.json"
+command_background=true
+pidfile="/run/xray.pid"
+
+depend() {
+    need net
+}
+XRAYINITEOF
+  chmod +x /etc/init.d/xray
+  rc-update add xray default
+else
+  info "创建 systemd 服务..."
+  cat > /etc/systemd/system/nginx.service << 'SERVICEEOF'
 [Unit]
 Description=A high performance web server and a reverse proxy server
 Documentation=man:nginx(8)
@@ -190,7 +253,7 @@ PIDFile=/run/nginx.pid
 ExecStartPre=/usr/sbin/nginx -t -q -g 'daemon on; master_process on;'
 ExecStart=/usr/sbin/nginx -g 'daemon on; master_process on;'
 ExecReload=/usr/sbin/nginx -g 'daemon on; master_process on;' -s reload
-ExecStop=-/sbin/start-stop-daemon --quiet --stop --retry QUIT/5 --pidfile /run/nginx.pid
+ExecStop=-/bin/kill -s QUIT $MAINPID
 TimeoutStopSec=5
 KillMode=mixed
 
@@ -198,8 +261,9 @@ KillMode=mixed
 WantedBy=multi-user.target
 SERVICEEOF
 
-systemctl daemon-reload
-systemctl enable nginx.service
+  systemctl daemon-reload
+  systemctl enable nginx.service
+fi
 echo ""
 
 info "[4/6] 生成配置文件"
@@ -429,11 +493,17 @@ info "测试 Xray 配置..."
 xray -test -config /usr/local/etc/xray/config.json
 
 info "启动服务..."
-systemctl restart xray
-systemctl restart nginx
-
-systemctl is-active --quiet xray && info "Xray 运行中" || warn "Xray 启动失败"
-systemctl is-active --quiet nginx && info "Nginx 运行中" || warn "Nginx 启动失败"
+if [[ "$OS_ID" == "alpine" ]]; then
+  rc-service xray restart
+  rc-service nginx restart
+  rc-service xray status >/dev/null 2>&1 && info "Xray 运行中" || warn "Xray 启动失败"
+  rc-service nginx status >/dev/null 2>&1 && info "Nginx 运行中" || warn "Nginx 启动失败"
+else
+  systemctl restart xray
+  systemctl restart nginx
+  systemctl is-active --quiet xray && info "Xray 运行中" || warn "Xray 启动失败"
+  systemctl is-active --quiet nginx && info "Nginx 运行中" || warn "Nginx 启动失败"
+fi
 
 echo ""
 
