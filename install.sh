@@ -30,7 +30,7 @@ case "$OS_ID" in
     }
     ;;
   centos|rhel|almalinux|rocky|ol|amzn)
-    pkg_update()  { yum update -y; }
+    pkg_update()  { yum makecache; }
     pkg_install() { yum install -y "$@"; }
     install_build_deps() {
       yum groupinstall -y "Development Tools"
@@ -39,7 +39,7 @@ case "$OS_ID" in
     }
     ;;
   fedora)
-    pkg_update()  { dnf update -y; }
+    pkg_update()  { dnf makecache; }
     pkg_install() { dnf install -y "$@"; }
     install_build_deps() {
       dnf groupinstall -y "Development Tools"
@@ -133,6 +133,7 @@ fi
 
 info "安装 Xray..."
 bash -c "$(curl -L https://github.com/XTLS/Xray-install/raw/main/install-release.sh)" @ install -u root
+export PATH="/usr/local/bin:$PATH"
 
 info "生成参数..."
 UUID1=$(xray uuid)
