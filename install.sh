@@ -13,6 +13,67 @@ error() { echo -e "${RED}[ERROR]${NC} $*"; exit 1; }
 
 [[ $EUID -ne 0 ]] && error "请使用 root 用户运行此脚本"
 
+if [[ -f /etc/os-release ]]; then
+  . /etc/os-release
+  OS_ID="$ID"
+else
+  error "无法识别当前系统发行版"
+fi
+
+case "$OS_ID" in
+  debian|ubuntu|linuxmint|kali|armbian)
+    pkg_update()  { apt update -y && apt upgrade -y; }
+    pkg_install() { apt install -y "$@"; }
+    install_build_deps() {
+      apt-get install -y gcc g++ libpcre3 libpcre3-dev zlib1g zlib1g-dev openssl libssl-dev wget make 2>/dev/null || \
+        apt-get install -y gcc g++ libpcre2-dev zlib1g-dev libssl-dev wget make
+    }
+    ;;
+  centos|rhel|almalinux|rocky|ol|amzn)
+    pkg_update()  { yum update -y; }
+    pkg_install() { yum install -y "$@"; }
+    install_build_deps() {
+      yum groupinstall -y "Development Tools"
+      yum install -y pcre-devel pcre2-devel zlib-devel openssl-devel wget make
+    }
+    ;;
+  fedora)
+    pkg_update()  { dnf update -y; }
+    pkg_install() { dnf install -y "$@"; }
+    install_build_deps() {
+      dnf groupinstall -y "Development Tools"
+      dnf install -y pcre-devel pcre2-devel zlib-devel openssl-devel wget make
+    }
+    ;;
+  arch|manjaro)
+    pkg_update()  { pacman -Syu --noconfirm; }
+    pkg_install() { pacman -S --noconfirm "$@"; }
+    install_build_deps() {
+      pacman -S --noconfirm base-devel pcre pcre2 zlib openssl wget
+    }
+    ;;
+  alpine)
+    pkg_update()  { apk update && apk upgrade; }
+    pkg_install() { apk add "$@"; }
+    install_build_deps() {
+      apk add gcc g++ make pcre-dev pcre2-dev zlib-dev openssl-dev wget
+    }
+    ;;
+  opensuse*|sles)
+    pkg_update()  { zypper refresh && zypper update -y; }
+    pkg_install() { zypper install -y "$@"; }
+    install_build_deps() {
+      zypper install -y -t pattern devel_basis
+      zypper install -y pcre-devel pcre2-devel zlib-devel libopenssl-devel wget make
+    }
+    ;;
+  *)
+    error "不支持的发行版: $OS_ID，目前支持 Debian/Ubuntu/CentOS/RHEL/Fedora/Arch/Alpine/openSUSE"
+    ;;
+esac
+
+info "检测到系统: $PRETTY_NAME"
+
 if [[ -n "$SUDO_USER" && "$SUDO_USER" != "root" ]]; then
   USER_HOME=$(eval echo "~$SUDO_USER")
 else
@@ -41,8 +102,8 @@ echo ""
 
 info "[1/6] 安装基础环境"
 
-apt update -y && apt upgrade -y
-apt install -y curl sudo socat cron
+pkg_update
+pkg_install curl sudo socat cron
 
 info "安装 Xray..."
 bash -c "$(curl -L https://github.com/XTLS/Xray-install/raw/main/install-release.sh)" @ install -u root
@@ -88,8 +149,7 @@ echo ""
 info "[3/6] 编译安装 Nginx"
 
 info "安装编译依赖..."
-apt-get install -y gcc g++ libpcre3 libpcre3-dev zlib1g zlib1g-dev openssl libssl-dev wget make 2>/dev/null || \
-  apt-get install -y gcc g++ libpcre2-dev zlib1g-dev libssl-dev wget make
+install_build_deps
 
 NGINX_VER="1.27.3"
 cd /tmp
