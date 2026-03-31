@@ -133,9 +133,13 @@ XHTTP_PATH="/$(echo "$UUID2" | tr -d '-' | cut -c1-8)"
 if [[ "$IP_CHOICE" == "2" ]]; then
   VPS_IP=$(curl -6 -s --max-time 5 ip.sb)
   [[ -z "$VPS_IP" ]] && error "无法获取 IPv6 地址"
+  VPS_IP_URI="[${VPS_IP}]"
+  VPS_IP_ENC=$(echo "$VPS_IP" | sed 's/:/%3A/g')
 else
   VPS_IP=$(curl -4 -s --max-time 5 ip.sb)
   [[ -z "$VPS_IP" ]] && error "无法获取 IPv4 地址"
+  VPS_IP_URI="${VPS_IP}"
+  VPS_IP_ENC="${VPS_IP}"
 fi
 
 info "UUID1 (Vision): $UUID1"
@@ -155,7 +159,11 @@ ln -sf /root/.acme.sh/acme.sh /usr/local/bin/acme.sh
 acme.sh --set-default-ca --server letsencrypt
 
 info "申请双域名证书 (需要 80 端口空闲)..."
-acme.sh --issue -d "$REALITY_DOMAIN" -d "$CDN_DOMAIN" --standalone
+if [[ "$IP_CHOICE" == "2" ]]; then
+  acme.sh --issue -d "$REALITY_DOMAIN" -d "$CDN_DOMAIN" --standalone --listen-v6
+else
+  acme.sh --issue -d "$REALITY_DOMAIN" -d "$CDN_DOMAIN" --standalone
+fi
 
 mkdir -p /etc/ssl/private
 acme.sh --install-cert -d "$REALITY_DOMAIN" --ecc \
@@ -458,16 +466,16 @@ echo ""
 info "[6/6] 生成客户端配置"
 XHTTP_PATH_ENC=$(printf '%s' "$XHTTP_PATH" | sed 's|/|%2F|g')
 
-EXTRA_3="%7B%22downloadSettings%22%3A%7B%22address%22%3A%22${VPS_IP}%22%2C%22port%22%3A443%2C%22network%22%3A%22xhttp%22%2C%22security%22%3A%22reality%22%2C%22realitySettings%22%3A%7B%22show%22%3Afalse%2C%22serverName%22%3A%22${REALITY_DOMAIN}%22%2C%22fingerprint%22%3A%22chrome%22%2C%22shortId%22%3A%22${SHORT_ID}%22%2C%22publicKey%22%3A%22${PUBLIC_KEY}%22%7D%2C%22xhttpSettings%22%3A%7B%22host%22%3A%22%22%2C%22path%22%3A%22${XHTTP_PATH_ENC}%22%2C%22mode%22%3A%22auto%22%7D%7D%7D"
+EXTRA_3="%7B%22downloadSettings%22%3A%7B%22address%22%3A%22${VPS_IP_ENC}%22%2C%22port%22%3A443%2C%22network%22%3A%22xhttp%22%2C%22security%22%3A%22reality%22%2C%22realitySettings%22%3A%7B%22show%22%3Afalse%2C%22serverName%22%3A%22${REALITY_DOMAIN}%22%2C%22fingerprint%22%3A%22chrome%22%2C%22shortId%22%3A%22${SHORT_ID}%22%2C%22publicKey%22%3A%22${PUBLIC_KEY}%22%7D%2C%22xhttpSettings%22%3A%7B%22host%22%3A%22%22%2C%22path%22%3A%22${XHTTP_PATH_ENC}%22%2C%22mode%22%3A%22auto%22%7D%7D%7D"
 
 EXTRA_5="%7B%22downloadSettings%22%3A%7B%22address%22%3A%22${CDN_DOMAIN}%22%2C%22port%22%3A443%2C%22network%22%3A%22xhttp%22%2C%22security%22%3A%22tls%22%2C%22tlsSettings%22%3A%7B%22serverName%22%3A%22${CDN_DOMAIN}%22%2C%22allowInsecure%22%3Afalse%2C%22alpn%22%3A%5B%22h2%22%5D%2C%22fingerprint%22%3A%22chrome%22%7D%2C%22xhttpSettings%22%3A%7B%22host%22%3A%22${CDN_DOMAIN}%22%2C%22path%22%3A%22${XHTTP_PATH_ENC}%22%2C%22mode%22%3A%22auto%22%7D%7D%7D"
 
 cat > "$USER_HOME/client-config.txt" << CLIENTEOF
-vless://${UUID1}@${VPS_IP}:443?encryption=none&flow=xtls-rprx-vision&security=reality&sni=${REALITY_DOMAIN}&fp=chrome&pbk=${PUBLIC_KEY}&sid=${SHORT_ID}&type=tcp&headerType=none#reality%2Bvision%20%E7%9B%B4%E8%BF%9E
-vless://${UUID2}@${VPS_IP}:443?encryption=none&security=reality&sni=${REALITY_DOMAIN}&fp=chrome&pbk=${PUBLIC_KEY}&sid=${SHORT_ID}&type=xhttp&path=${XHTTP_PATH}&mode=auto#xhttp%2BReality%20%E4%B8%8A%E4%B8%8B%E8%A1%8C%E4%B8%8D%E5%88%86%E7%A6%BB%20%EF%BC%88%E4%B8%8A%E8%A1%8C%E4%B8%BA%20stream-one%20%E6%A8%A1%E5%BC%8F%EF%BC%89
+vless://${UUID1}@${VPS_IP_URI}:443?encryption=none&flow=xtls-rprx-vision&security=reality&sni=${REALITY_DOMAIN}&fp=chrome&pbk=${PUBLIC_KEY}&sid=${SHORT_ID}&type=tcp&headerType=none#reality%2Bvision%20%E7%9B%B4%E8%BF%9E
+vless://${UUID2}@${VPS_IP_URI}:443?encryption=none&security=reality&sni=${REALITY_DOMAIN}&fp=chrome&pbk=${PUBLIC_KEY}&sid=${SHORT_ID}&type=xhttp&path=${XHTTP_PATH}&mode=auto#xhttp%2BReality%20%E4%B8%8A%E4%B8%8B%E8%A1%8C%E4%B8%8D%E5%88%86%E7%A6%BB%20%EF%BC%88%E4%B8%8A%E8%A1%8C%E4%B8%BA%20stream-one%20%E6%A8%A1%E5%BC%8F%EF%BC%89
 vless://${UUID2}@${CDN_DOMAIN}:443?encryption=none&security=tls&sni=${CDN_DOMAIN}&fp=chrome&alpn=h2&insecure=0&allowInsecure=0&type=xhttp&host=${CDN_DOMAIN}&path=${XHTTP_PATH}&mode=auto&extra=${EXTRA_3}#%E4%B8%8A%E8%A1%8C%20xhttp%2BTLS%2BCDN%20%7C%20%E4%B8%8B%E8%A1%8C%20xhttp%2BReality
 vless://${UUID2}@${CDN_DOMAIN}:443?encryption=none&security=tls&sni=${CDN_DOMAIN}&fp=chrome&alpn=h2&insecure=0&allowInsecure=0&type=xhttp&host=${CDN_DOMAIN}&path=${XHTTP_PATH}&mode=auto#xhttp%2Btls%20%E5%8F%8C%E5%90%91CDN
-vless://${UUID2}@${VPS_IP}:443?encryption=none&security=reality&sni=${REALITY_DOMAIN}&fp=chrome&pbk=${PUBLIC_KEY}&sid=${SHORT_ID}&type=xhttp&path=${XHTTP_PATH}&mode=auto&extra=${EXTRA_5}#%E4%B8%8A%E8%A1%8C%20xhttp%2BReality%20%7C%20%E4%B8%8B%E8%A1%8C%20xhttp%2BTLS%2BCDN
+vless://${UUID2}@${VPS_IP_URI}:443?encryption=none&security=reality&sni=${REALITY_DOMAIN}&fp=chrome&pbk=${PUBLIC_KEY}&sid=${SHORT_ID}&type=xhttp&path=${XHTTP_PATH}&mode=auto&extra=${EXTRA_5}#%E4%B8%8A%E8%A1%8C%20xhttp%2BReality%20%7C%20%E4%B8%8B%E8%A1%8C%20xhttp%2BTLS%2BCDN
 CLIENTEOF
 
 echo -e "\n${CYAN}[+] 部署完成${NC}\n"
