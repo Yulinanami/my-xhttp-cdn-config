@@ -87,7 +87,11 @@ read -rp "请输入 CDN 域名 (如 cdn.example.com): " CDN_DOMAIN
 echo ""
 echo "  1) IPv4"
 echo "  2) IPv6"
+<<<<<<< HEAD
 read -rp "请选择 IP 类型 [1/2] (默认 1): " IP_CHOICE
+=======
+read -rp "请选择 IP 协议 [1/2] (默认 1): " IP_CHOICE
+>>>>>>> 3860c824280d33ea4f31f01006233151cbaf7c25
 IP_CHOICE=${IP_CHOICE:-1}
 
 echo ""
