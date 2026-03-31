@@ -70,6 +70,7 @@ fi
 [[ -z "$USER_HOME" || ! -d "$USER_HOME" ]] && USER_HOME="/root"
 
 echo -e "\n${CYAN}[+] XHTTP + CDN 一键部署脚本${NC}\n"
+echo -e "${GREEN}[+] 推荐系统: Ubuntu 24.04 / Debian 12${NC}"
 echo -e "${YELLOW}[+] 前置条件 (请确认已在 Cloudflare 完成):${NC}"
 echo "  1. Reality 域名 DNS → 仅 DNS (灰色云朵)"
 echo "  2. CDN 域名 DNS    → 代理开启 (橙色云朵)"
@@ -82,6 +83,12 @@ read -rp "请输入 Reality 域名 (如 reality.example.com): " REALITY_DOMAIN
 
 read -rp "请输入 CDN 域名 (如 cdn.example.com): " CDN_DOMAIN
 [[ -z "$CDN_DOMAIN" ]] && error "域名不能为空"
+
+echo ""
+echo "  1) IPv4"
+echo "  2) IPv6"
+read -rp "请选择 IP 协议 [1/2] (默认 1): " IP_CHOICE
+IP_CHOICE=${IP_CHOICE:-1}
 
 echo ""
 info "Reality: $REALITY_DOMAIN"
@@ -123,7 +130,13 @@ PUBLIC_KEY=$(echo "$KEY_OUTPUT" | grep -i "public" | awk -F': ' '{print $2}' | t
 [[ -z "$PUBLIC_KEY" ]] && error "未能提取 Public Key，xray x25519 输出: $KEY_OUTPUT"
 SHORT_ID=$(echo "$UUID1" | tr -d '-' | cut -c1-8)
 XHTTP_PATH="/$(echo "$UUID2" | tr -d '-' | cut -c1-8)"
-VPS_IP=$(curl -4 -s ip.sb)
+if [[ "$IP_CHOICE" == "2" ]]; then
+  VPS_IP=$(curl -6 -s --max-time 5 ip.sb)
+  [[ -z "$VPS_IP" ]] && error "无法获取 IPv6 地址"
+else
+  VPS_IP=$(curl -4 -s --max-time 5 ip.sb)
+  [[ -z "$VPS_IP" ]] && error "无法获取 IPv4 地址"
+fi
 
 info "UUID1 (Vision): $UUID1"
 info "UUID2 (XHTTP):  $UUID2"
