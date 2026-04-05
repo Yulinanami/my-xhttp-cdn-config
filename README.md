@@ -49,6 +49,49 @@ wget -O install.sh https://raw.githubusercontent.com/Yulinanami/my-xhttp-cdn-con
 4. XHTTP + TLS 双向 CDN
 5. 上行 XHTTP + Reality，下行 XHTTP + TLS + CDN
 
+## 去程流程图（上行 / 请求方向）
+
+```mermaid
+graph TD
+	START2("外部请求到达 VPS:443")
+
+	START2 -->|"代理软件请求"| PROXY["客户端代理请求"]
+	START2 -->|"防火墙主动探测"| PROBEX["探测请求"]
+
+	PROXY -->|"Vision 直连 / XHTTP+Reality<br/>直连 VPS:443"| GFWD["穿过防火墙"]
+	GFWD --> XR443["Xray 443<br/>VLESS + Reality<br/>serverNames: REALITY_DOMAIN"]
+
+	PROXY -->|"XHTTP+TLS+CDN<br/>连接 CDN 域名:443"| GFWC["穿过防火墙"]
+	GFWC --> CF["Cloudflare CDN"]
+	CF -->|"回源 VPS:443"| XR443C["Xray 443"]
+	XR443C -->|"非 Reality<br/>target:8003 转发"| NG8003["Nginx 8003<br/>server_name: CDN_DOMAIN"]
+
+	XR443 --> VISION{"UUID1 + Vision?"}
+	VISION -->|"是<br/>flow: xtls-rprx-vision"| HANDLE443["Xray 443 处理 UUID1 代理请求<br/>Reality+Vision 直连到达"]
+	HANDLE443 --> OUT2("Xray outbound direct<br/>到达目标网站")
+
+	VISION -->|"否<br/>fallback dest:8001"| XR8001A["Xray 8001<br/>127.0.0.1:8001<br/>VLESS + XHTTP<br/>UUID2 path: XHTTP_PATH<br/>XHTTP+Reality 到达"]
+	XR8001A --> OUT2
+
+	NG8003 --> PATHCHK{"location 匹配<br/>XHTTP_PATH?"}
+	PATHCHK -->|"是"| GRPC["grpc_pass 127.0.0.1:8001"]
+	GRPC --> XR8001B["Xray 8001<br/>VLESS + XHTTP<br/>XHTTP+TLS+CDN 到达"]
+	XR8001B --> OUT2
+	PATHCHK -->|"否<br/>location /"| HARVARD["proxy_pass harvard.edu"]
+	HARVARD --> HVSITE["返回哈佛官网页面"]
+
+	PROBEX -->|"探测 Reality 域名<br/>直连 VPS:443"| XR443P["Xray 443"]
+	XR443P -->|"非 Reality<br/>target:8003 转发"| NG8003R["Nginx 8003<br/>server_name: REALITY_DOMAIN"]
+	NG8003R -->|"location /"| STANFORD["proxy_pass stanford.edu"]
+	STANFORD --> STSITE["返回斯坦福官网页面"]
+
+	PROBEX -->|"探测 CDN 域名<br/>DNS 走橙色云朵"| CFC["Cloudflare CDN"]
+	CFC -->|"回源 VPS:443"| XR443C2["Xray 443"]
+	XR443C2 -->|"非 Reality<br/>target:8003 转发"| NG8003C["Nginx 8003<br/>server_name: CDN_DOMAIN"]
+	NG8003C -->|"location /"| HARVARD2["proxy_pass harvard.edu"]
+	HARVARD2 --> HVSITE2["返回哈佛官网页面"]
+```
+
 ## 注意事项
 
 - 文档中的占位符需要全部替换后再使用。
