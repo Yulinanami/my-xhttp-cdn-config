@@ -99,4 +99,5 @@ graph TD
 ## 参考资料
 
 - Xray-core Discussion: https://github.com/XTLS/Xray-core/discussions/4118
+- Xray小白搭建教程： https://xtls.github.io/document/level-0/ch06-certificates.html 和 https://xtls.github.io/document/level-0/ch07-xray-server.html
 - 参考文章: https://jollyroger.top/sites/361.html
