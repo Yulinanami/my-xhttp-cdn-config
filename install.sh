@@ -76,6 +76,8 @@ echo "  1. Reality 域名 DNS → 仅 DNS (灰色云朵)"
 echo "  2. CDN 域名 DNS    → 代理开启 (橙色云朵)"
 echo "  3. SSL/TLS 加密    → 完全(严格)"
 echo "  4. 网络 → gRPC     → 已开启"
+echo "  5. 缓存规则         → 在Cloudflare上将CDN域名的 XHTTP 路径设为绕过缓存 (建议)"
+echo "     具体步骤请参考Github仓库的环境配置.md文档"
 echo ""
 
 read -rp "请输入 Reality 域名 (如 reality.example.com): " REALITY_DOMAIN
