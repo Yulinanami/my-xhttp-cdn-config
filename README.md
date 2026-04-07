@@ -30,6 +30,7 @@ wget -O install.sh https://raw.githubusercontent.com/Yulinanami/my-xhttp-cdn-con
 2. CDN 域名 DNS → 代理开启（橙色云朵）
 3. SSL/TLS 加密 → 完全（严格）
 4. 网络 → gRPC → 已开启
+5. 缓存规则（建议） → 将 XHTTP 路径设为绕过缓存，具体步骤请参考Github仓库的[环境配置.md](./1.环境配置.md)。
 
 ## 手动部署
 
