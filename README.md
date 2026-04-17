@@ -7,7 +7,8 @@
 - [1.环境配置.md](./1.环境配置.md)：环境准备、Cloudflare 前置设置、Acme.sh 证书申请、Nginx 编译安装。
 - [2.文件配置.md](./2.文件配置.md)：Nginx 反向代理配置、Xray 服务端配置。
 - [客户端模板.txt](./客户端模板.txt)：客户端连接模板，包含 5 种常见连接模式。
-- [install.sh](./install.sh)：一键部署脚本，自动完成全部安装配置并生成客户端节点。
+- [客户端模板-mihomo.yaml](./客户端模板-mihomo.yaml)：Mihomo 客户端完整 YAML 模板。
+- [install.sh](./install.sh)：一键部署脚本，自动完成全部安装配置并生成 V2rayN / Mihomo 客户端配置。
 
 ## 一键部署
 
@@ -23,7 +24,10 @@ bash <(curl -fsSL https://raw.githubusercontent.com/Yulinanami/my-xhttp-cdn-conf
 wget -O install.sh https://raw.githubusercontent.com/Yulinanami/my-xhttp-cdn-config/refs/heads/master/install.sh && bash install.sh
 ```
 
-脚本会提示输入两个域名，其余参数（UUID、密钥、shortId、路径）全部自动生成。完成后节点配置保存到 `~/client-config.txt`。
+脚本会提示输入两个域名，其余参数（UUID、密钥、shortId、路径）全部自动生成。完成后会同时生成：
+
+- `~/client-config.txt`：V2rayN / Xray URI 节点
+- `~/client-config-mihomo.yaml`：Mihomo 可直接导入的 YAML 配置
 
 **前置条件**：运行脚本前需在 Cloudflare 完成以下设置：
 1. Reality 域名 DNS → 仅 DNS（灰色云朵）
@@ -32,7 +36,9 @@ wget -O install.sh https://raw.githubusercontent.com/Yulinanami/my-xhttp-cdn-con
 4. 网络 → gRPC → 已开启
 5. 缓存规则（建议） → 将 XHTTP 路径设为绕过缓存，具体步骤请参考Github仓库的[环境配置.md](./1.环境配置.md)。
 
-> **注意**：脚本强制启用 VLESS Encryption（防 CDN 中间人解密），客户端（V2rayN 等）也需要更新到支持 vlessenc 的新版本。
+> **注意**：教程使用 VLESS Encryption，客户端（V2rayN、Mihomo客户端）也需要更新到支持 vlessenc / xhttp 的新版本。
+>
+> **Mihomo 版本要求**：建议直接使用 **Mihomo v1.19.23或更新版本**。
 
 ## 手动部署
 
@@ -40,11 +46,13 @@ wget -O install.sh https://raw.githubusercontent.com/Yulinanami/my-xhttp-cdn-con
 
 1. [环境配置.md](./1.环境配置.md)，完成 Cloudflare 设置、Xray 安装、证书申请和 Nginx 安装。
 2. [文件配置.md](./2.文件配置.md)，完成 Nginx 与 Xray 配置，并执行测试与重启命令。
-3. [客户端模板.txt](./客户端模板.txt)，复制到V2rayN，替换YOUR开头的占位符后可以正常使用。
+3. [客户端模板.txt](./客户端模板.txt)，复制到 V2rayN，替换 `YOUR_*` 占位符后使用。
+4. [客户端模板-mihomo.yaml](./客户端模板-mihomo.yaml)，Mihomo内核客户端的配置文件，替换 `YOUR_*` 占位符后导入。
+5. 如需核对 Mihomo 字段来源，可先阅读 [docs/mihomo-official/README.md](./docs/mihomo-official/README.md)。
 
 ## 模式
 
-[客户端模板.txt](./客户端模板.txt) 当前包含以下 5 种模式：
+[客户端模板.txt](./客户端模板.txt) 与 [客户端模板-mihomo.yaml](./客户端模板-mihomo.yaml) 当前都包含以下 5 种模式：
 
 1. Reality Vision 直连
 2. XHTTP + Reality 上下行不分离
@@ -129,6 +137,9 @@ graph TD
 
 ## 参考资料
 
-- Xray-core Discussion: https://github.com/XTLS/Xray-core/discussions/4118
 - Xray小白搭建教程： https://xtls.github.io/document/level-0/ch06-certificates.html 和 https://xtls.github.io/document/level-0/ch07-xray-server.html
-- 参考文章: https://jollyroger.top/sites/361.html
+- Xray-core Xhttp-CDN 上下行分离讨论: https://github.com/XTLS/Xray-core/discussions/4118
+- Xhttp-CDN 上下行分离手搓: https://jollyroger.top/sites/361.html
+- Mihomo xhttp 讨论: https://github.com/MetaCubeX/mihomo/discussions/2669
+- Mihomo 文档（VLESS / 传输层 / TLS）: https://wiki.metacubex.one/config/proxies/vless/ 、https://wiki.metacubex.one/config/proxies/transport/ 、https://wiki.metacubex.one/config/proxies/tls/
+- Mihomo 分流规则配置: https://github.com/xiaolin-007/clash-verge-script
