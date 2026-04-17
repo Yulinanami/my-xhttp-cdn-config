@@ -506,7 +506,7 @@ unified-delay: true
 dns:
   enable: true
   listen: "0.0.0.0:1053"
-  ipv6: false
+  ipv6: true
   prefer-h3: false
   respect-rules: true
   use-system-hosts: false
