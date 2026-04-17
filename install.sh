@@ -495,6 +495,211 @@ vless://${UUID2}@${CDN_DOMAIN}:443?encryption=${VLESSENC_ENCRYPTION}&security=tl
 vless://${UUID2}@${VPS_IP_URI}:443?encryption=${VLESSENC_ENCRYPTION}&security=reality&sni=${REALITY_DOMAIN}&fp=chrome&pbk=${PUBLIC_KEY}&sid=${SHORT_ID}&type=xhttp&path=${XHTTP_PATH}&mode=auto&extra=${EXTRA_5}#%E4%B8%8A%E8%A1%8C%20xhttp%2BReality%20%7C%20%E4%B8%8B%E8%A1%8C%20xhttp%2BTLS%2BCDN
 CLIENTEOF
 
+cat > "$USER_HOME/client-config-mihomo.yaml" << MIHOMOEOF
+# Mihomo 客户端模板（自动生成）
+# 说明：
+# 1. 模式 3 / 5 使用 xhttp-opts.download-settings 实现上下行分离
+# 2. XHTTP 节点的 encryption 已填入 xray vlessenc 生成的值
+# 3. 模式 5 的下行必须清空 Reality 公钥，避免 CDN 下行继续携带 Reality 握手
+# 4. 基线版本按 Mihomo v1.19.23+ 编写，已启用 xhttp reuse-settings（XMUX）
+# 5. 模板默认不写 skip-cert-verify，保持证书校验开启
+
+mixed-port: 7890
+allow-lan: false
+mode: rule
+log-level: info
+ipv6: true
+unified-delay: true
+
+dns:
+  enable: true
+  ipv6: true
+  enhanced-mode: fake-ip
+  listen: 0.0.0.0:1053
+  default-nameserver:
+    - 1.1.1.1
+    - 8.8.8.8
+  nameserver:
+    - https://1.1.1.1/dns-query
+    - https://8.8.8.8/dns-query
+
+proxies:
+  - name: "reality+vision 直连"
+    type: vless
+    server: "${VPS_IP}"
+    port: 443
+    uuid: "${UUID1}"
+    udp: true
+    tls: true
+    flow: xtls-rprx-vision
+    encryption: "none"
+    network: tcp
+    alpn:
+      - h2
+    servername: "${REALITY_DOMAIN}"
+    client-fingerprint: chrome
+    reality-opts:
+      public-key: "${PUBLIC_KEY}"
+      short-id: "${SHORT_ID}"
+
+  - name: "xhttp+Reality 上下行不分离"
+    type: vless
+    server: "${VPS_IP}"
+    port: 443
+    uuid: "${UUID2}"
+    udp: true
+    flow: ""
+    tls: true
+    encryption: "${VLESSENC_ENCRYPTION}"
+    network: xhttp
+    alpn:
+      - h2
+    servername: "${REALITY_DOMAIN}"
+    client-fingerprint: chrome
+    reality-opts:
+      public-key: "${PUBLIC_KEY}"
+      short-id: "${SHORT_ID}"
+    xhttp-opts:
+      path: "${XHTTP_PATH}"
+      mode: auto
+      reuse-settings:
+        max-concurrency: "16-32"
+        c-max-reuse-times: "0"
+        h-max-reusable-secs: "1800-3000"
+
+  - name: "上行 xhttp+TLS+CDN | 下行 xhttp+Reality"
+    type: vless
+    server: "${CDN_DOMAIN}"
+    port: 443
+    uuid: "${UUID2}"
+    udp: true
+    flow: ""
+    tls: true
+    encryption: "${VLESSENC_ENCRYPTION}"
+    network: xhttp
+    alpn:
+      - h2
+    servername: "${CDN_DOMAIN}"
+    client-fingerprint: chrome
+    xhttp-opts:
+      host: "${CDN_DOMAIN}"
+      path: "${XHTTP_PATH}"
+      mode: auto
+      reuse-settings:
+        max-concurrency: "16-32"
+        c-max-reuse-times: "0"
+        h-max-reusable-secs: "1800-3000"
+      download-settings:
+        path: "${XHTTP_PATH}"
+        server: "${VPS_IP}"
+        port: 443
+        tls: true
+        alpn:
+          - h2
+        servername: "${REALITY_DOMAIN}"
+        client-fingerprint: chrome
+        reality-opts:
+          public-key: "${PUBLIC_KEY}"
+          short-id: "${SHORT_ID}"
+        reuse-settings:
+          max-concurrency: "16-32"
+          c-max-reuse-times: "0"
+          h-max-reusable-secs: "1800-3000"
+
+  - name: "xhttp+TLS 双向 CDN"
+    type: vless
+    server: "${CDN_DOMAIN}"
+    port: 443
+    uuid: "${UUID2}"
+    udp: true
+    flow: ""
+    tls: true
+    network: xhttp
+    alpn:
+      - h2
+    servername: "${CDN_DOMAIN}"
+    client-fingerprint: chrome
+    encryption: "${VLESSENC_ENCRYPTION}"
+    xhttp-opts:
+      host: "${CDN_DOMAIN}"
+      path: "${XHTTP_PATH}"
+      mode: auto
+      reuse-settings:
+        max-concurrency: "16-32"
+        c-max-reuse-times: "0"
+        h-max-reusable-secs: "1800-3000"
+
+  - name: "上行 xhttp+Reality | 下行 xhttp+TLS+CDN"
+    type: vless
+    server: "${VPS_IP}"
+    port: 443
+    uuid: "${UUID2}"
+    udp: true
+    flow: ""
+    tls: true
+    network: xhttp
+    alpn:
+      - h2
+    servername: "${REALITY_DOMAIN}"
+    client-fingerprint: chrome
+    reality-opts:
+      public-key: "${PUBLIC_KEY}"
+      short-id: "${SHORT_ID}"
+    encryption: "${VLESSENC_ENCRYPTION}"
+    xhttp-opts:
+      host: "${CDN_DOMAIN}"
+      path: "${XHTTP_PATH}"
+      mode: auto
+      reuse-settings:
+        max-concurrency: "16-32"
+        c-max-reuse-times: "0"
+        h-max-reusable-secs: "1800-3000"
+      download-settings:
+        host: "${CDN_DOMAIN}"
+        path: "${XHTTP_PATH}"
+        server: "${CDN_DOMAIN}"
+        port: 443
+        tls: true
+        alpn:
+          - h2
+        servername: "${CDN_DOMAIN}"
+        client-fingerprint: chrome
+        reality-opts: { public-key: "" }
+        reuse-settings:
+          max-concurrency: "16-32"
+          c-max-reuse-times: "0"
+          h-max-reusable-secs: "1800-3000"
+
+proxy-groups:
+  - name: "节点选择"
+    type: select
+    proxies:
+      - "自动选择"
+      - "DIRECT"
+      - "reality+vision 直连"
+      - "xhttp+Reality 上下行不分离"
+      - "上行 xhttp+TLS+CDN | 下行 xhttp+Reality"
+      - "xhttp+TLS 双向 CDN"
+      - "上行 xhttp+Reality | 下行 xhttp+TLS+CDN"
+
+  - name: "自动选择"
+    type: url-test
+    url: "https://www.gstatic.com/generate_204"
+    interval: 300
+    tolerance: 50
+    proxies:
+      - "reality+vision 直连"
+      - "xhttp+Reality 上下行不分离"
+      - "上行 xhttp+TLS+CDN | 下行 xhttp+Reality"
+      - "xhttp+TLS 双向 CDN"
+      - "上行 xhttp+Reality | 下行 xhttp+TLS+CDN"
+
+rules:
+  - GEOIP,LAN,DIRECT
+  - GEOIP,CN,DIRECT
+  - MATCH,节点选择
+MIHOMOEOF
+
 echo -e "\n${CYAN}[+] 部署完成${NC}\n"
 echo -e "${YELLOW}[+] 服务端参数${NC}"
 echo "Reality 域名:   $REALITY_DOMAIN"
@@ -512,7 +717,11 @@ echo ""
 echo -e "\n${YELLOW}[+] 客户端节点，已保存到 $USER_HOME/client-config.txt${NC}"
 cat "$USER_HOME/client-config.txt"
 echo ""
-info "将以上节点复制到 V2rayN 即可使用"
+echo -e "${YELLOW}[+] Mihomo 配置文件，已保存到 $USER_HOME/client-config-mihomo.yaml${NC}"
+cat "$USER_HOME/client-config-mihomo.yaml"
+echo ""
+info "V2rayN 请导入 $USER_HOME/client-config.txt"
+info "Mihomo 请导入 $USER_HOME/client-config-mihomo.yaml"
 echo ""
 echo -e "${YELLOW}[+] 建议: 在 Cloudflare 配置缓存规则绕过 XHTTP 路径${NC}"
 echo "  Cloudflare → 缓存 → Cache Rules → 创建缓存规则"

@@ -1,0 +1,202 @@
+# Mihomo 客户端模板（XHTTP + CDN）
+# 说明：
+# 1. 模式 3 / 5 使用 xhttp-opts.download-settings 实现上下行分离
+# 2. YOUR_VLESSENC_ENCRYPTION 请填 xray vlessenc 生成的 encryption
+# 3. 模式 5 的下行必须清空 Reality 公钥，避免 CDN 下行继续携带 Reality 握手
+# 4. 基线版本按 Mihomo v1.19.23+ 编写，已启用 xhttp reuse-settings（XMUX）
+# 5. 模板默认不写 skip-cert-verify，保持证书校验开启
+
+mixed-port: 7890
+allow-lan: false
+mode: rule
+log-level: info
+ipv6: true
+unified-delay: true
+
+dns:
+  enable: true
+  ipv6: true
+  enhanced-mode: fake-ip
+  listen: 0.0.0.0:1053
+  default-nameserver:
+    - 1.1.1.1
+    - 8.8.8.8
+  nameserver:
+    - https://1.1.1.1/dns-query
+    - https://8.8.8.8/dns-query
+
+proxies:
+  - name: "reality+vision 直连"
+    type: vless
+    server: "YOUR_VPS_IP"
+    port: 443
+    uuid: "YOUR_UUID_1"
+    udp: true
+    tls: true
+    flow: xtls-rprx-vision
+    encryption: "none"
+    network: tcp
+    alpn:
+      - h2
+    servername: "YOUR_REALITY_DOMAIN"
+    client-fingerprint: chrome
+    reality-opts:
+      public-key: "YOUR_PUBLIC_KEY"
+      short-id: "YOUR_SHORT_ID"
+
+  - name: "xhttp+Reality 上下行不分离"
+    type: vless
+    server: "YOUR_VPS_IP"
+    port: 443
+    uuid: "YOUR_UUID_2"
+    udp: true
+    flow: ""
+    tls: true
+    encryption: "YOUR_VLESSENC_ENCRYPTION"
+    network: xhttp
+    alpn:
+      - h2
+    servername: "YOUR_REALITY_DOMAIN"
+    client-fingerprint: chrome
+    reality-opts:
+      public-key: "YOUR_PUBLIC_KEY"
+      short-id: "YOUR_SHORT_ID"
+    xhttp-opts:
+      path: "YOUR_PATH"
+      mode: auto
+      reuse-settings:
+        max-concurrency: "16-32"
+        c-max-reuse-times: "0"
+        h-max-reusable-secs: "1800-3000"
+
+  - name: "上行 xhttp+TLS+CDN | 下行 xhttp+Reality"
+    type: vless
+    server: "YOUR_CDN_DOMAIN"
+    port: 443
+    uuid: "YOUR_UUID_2"
+    udp: true
+    flow: ""
+    tls: true
+    encryption: "YOUR_VLESSENC_ENCRYPTION"
+    network: xhttp
+    alpn:
+      - h2
+    servername: "YOUR_CDN_DOMAIN"
+    client-fingerprint: chrome
+    xhttp-opts:
+      host: "YOUR_CDN_DOMAIN"
+      path: "YOUR_PATH"
+      mode: auto
+      reuse-settings:
+        max-concurrency: "16-32"
+        c-max-reuse-times: "0"
+        h-max-reusable-secs: "1800-3000"
+      download-settings:
+        path: "YOUR_PATH"
+        server: "YOUR_VPS_IP"
+        port: 443
+        tls: true
+        alpn:
+          - h2
+        servername: "YOUR_REALITY_DOMAIN"
+        client-fingerprint: chrome
+        reality-opts:
+          public-key: "YOUR_PUBLIC_KEY"
+          short-id: "YOUR_SHORT_ID"
+        reuse-settings:
+          max-concurrency: "16-32"
+          c-max-reuse-times: "0"
+          h-max-reusable-secs: "1800-3000"
+
+  - name: "xhttp+TLS 双向 CDN"
+    type: vless
+    server: "YOUR_CDN_DOMAIN"
+    port: 443
+    uuid: "YOUR_UUID_2"
+    udp: true
+    flow: ""
+    tls: true
+    network: xhttp
+    alpn:
+      - h2
+    servername: "YOUR_CDN_DOMAIN"
+    client-fingerprint: chrome
+    encryption: "YOUR_VLESSENC_ENCRYPTION"
+    xhttp-opts:
+      host: "YOUR_CDN_DOMAIN"
+      path: "YOUR_PATH"
+      mode: auto
+      reuse-settings:
+        max-concurrency: "16-32"
+        c-max-reuse-times: "0"
+        h-max-reusable-secs: "1800-3000"
+
+  - name: "上行 xhttp+Reality | 下行 xhttp+TLS+CDN"
+    type: vless
+    server: "YOUR_VPS_IP"
+    port: 443
+    uuid: "YOUR_UUID_2"
+    udp: true
+    flow: ""
+    tls: true
+    network: xhttp
+    alpn:
+      - h2
+    servername: "YOUR_REALITY_DOMAIN"
+    client-fingerprint: chrome
+    reality-opts:
+      public-key: "YOUR_PUBLIC_KEY"
+      short-id: "YOUR_SHORT_ID"
+    encryption: "YOUR_VLESSENC_ENCRYPTION"
+    xhttp-opts:
+      host: "YOUR_CDN_DOMAIN"
+      path: "YOUR_PATH"
+      mode: auto
+      reuse-settings:
+        max-concurrency: "16-32"
+        c-max-reuse-times: "0"
+        h-max-reusable-secs: "1800-3000"
+      download-settings:
+        host: "YOUR_CDN_DOMAIN"
+        path: "YOUR_PATH"
+        server: "YOUR_CDN_DOMAIN"
+        port: 443
+        tls: true
+        alpn:
+          - h2
+        servername: "YOUR_CDN_DOMAIN"
+        client-fingerprint: chrome
+        reality-opts: { public-key: "" }
+        reuse-settings:
+          max-concurrency: "16-32"
+          c-max-reuse-times: "0"
+          h-max-reusable-secs: "1800-3000"
+
+proxy-groups:
+  - name: "节点选择"
+    type: select
+    proxies:
+      - "自动选择"
+      - "DIRECT"
+      - "reality+vision 直连"
+      - "xhttp+Reality 上下行不分离"
+      - "上行 xhttp+TLS+CDN | 下行 xhttp+Reality"
+      - "xhttp+TLS 双向 CDN"
+      - "上行 xhttp+Reality | 下行 xhttp+TLS+CDN"
+
+  - name: "自动选择"
+    type: url-test
+    url: "https://www.gstatic.com/generate_204"
+    interval: 300
+    tolerance: 50
+    proxies:
+      - "reality+vision 直连"
+      - "xhttp+Reality 上下行不分离"
+      - "上行 xhttp+TLS+CDN | 下行 xhttp+Reality"
+      - "xhttp+TLS 双向 CDN"
+      - "上行 xhttp+Reality | 下行 xhttp+TLS+CDN"
+
+rules:
+  - GEOIP,LAN,DIRECT
+  - GEOIP,CN,DIRECT
+  - MATCH,节点选择
