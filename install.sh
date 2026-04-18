@@ -105,6 +105,7 @@ command -v sudo    >/dev/null 2>&1 || pkg_install sudo
 command -v socat   >/dev/null 2>&1 || pkg_install socat
 command -v wget    >/dev/null 2>&1 || pkg_install wget
 command -v tar     >/dev/null 2>&1 || pkg_install tar
+command -v openssl >/dev/null 2>&1 || pkg_install openssl
 
 if ! command -v crontab >/dev/null 2>&1; then
   case "$OS_ID" in
@@ -164,22 +165,60 @@ info "VPS IP:         $VPS_IP"
 info "VLESS Enc:      已启用 (防 CDN 中间人)"
 echo ""
 
-info "[2/6] 申请 SSL 证书"
+info "[2/6] 申请 / 复用 SSL 证书"
 
 curl https://get.acme.sh | sh
 ln -sf /root/.acme.sh/acme.sh /usr/local/bin/acme.sh
 
 acme.sh --set-default-ca --server letsencrypt
 
-info "申请双域名证书 (需要 80 端口空闲)..."
-if [[ "$IP_CHOICE" == "2" ]]; then
-  acme.sh --issue -d "$REALITY_DOMAIN" -d "$CDN_DOMAIN" --standalone --listen-v6 --keylength ec-256 \
-    --pre-hook "systemctl stop nginx 2>/dev/null || true" \
-    --post-hook "systemctl start nginx 2>/dev/null || true"
+ACME_CERT_HOME="/root/.acme.sh/${REALITY_DOMAIN}_ecc"
+ACME_CERT_CONF="${ACME_CERT_HOME}/${REALITY_DOMAIN}.conf"
+
+have_existing_dual_cert() {
+  [[ -f "$ACME_CERT_CONF" ]] || return 1
+
+  local alt_line
+  alt_line=$(grep "^Le_Alt=" "$ACME_CERT_CONF" 2>/dev/null || true)
+
+  grep -Fq "Le_Domain='${REALITY_DOMAIN}'" "$ACME_CERT_CONF" || return 1
+  [[ -n "$alt_line" && "$alt_line" == *"$CDN_DOMAIN"* ]] || return 1
+  [[ -f "$ACME_CERT_HOME/fullchain.cer" ]] || return 1
+  [[ -f "$ACME_CERT_HOME/${REALITY_DOMAIN}.key" ]] || return 1
+  return 0
+}
+
+issue_dual_cert() {
+  if [[ "$IP_CHOICE" == "2" ]]; then
+    acme.sh --issue -d "$REALITY_DOMAIN" -d "$CDN_DOMAIN" --standalone --listen-v6 --keylength ec-256 \
+      --pre-hook "systemctl stop nginx 2>/dev/null || true" \
+      --post-hook "systemctl start nginx 2>/dev/null || true"
+  else
+    acme.sh --issue -d "$REALITY_DOMAIN" -d "$CDN_DOMAIN" --standalone --keylength ec-256 \
+      --pre-hook "systemctl stop nginx 2>/dev/null || true" \
+      --post-hook "systemctl start nginx 2>/dev/null || true"
+  fi
+}
+
+if have_existing_dual_cert; then
+  info "检测到已存在的双域名证书，跳过重新签发，直接复用"
 else
-  acme.sh --issue -d "$REALITY_DOMAIN" -d "$CDN_DOMAIN" --standalone --keylength ec-256 \
-    --pre-hook "systemctl stop nginx 2>/dev/null || true" \
-    --post-hook "systemctl start nginx 2>/dev/null || true"
+  info "未检测到可复用的双域名证书，开始申请 (需要 80 端口空闲)..."
+  set +e
+  ISSUE_OUTPUT=$(issue_dual_cert 2>&1)
+  ISSUE_CODE=$?
+  set -e
+  echo "$ISSUE_OUTPUT"
+  if [[ $ISSUE_CODE -ne 0 ]]; then
+    if echo "$ISSUE_OUTPUT" | grep -Eqi 'Domains not changed|Skipping\\. Next renewal time'; then
+      warn "acme.sh 返回“Domains not changed”，视为已有证书可复用，继续执行"
+    elif echo "$ISSUE_OUTPUT" | grep -Eqi 'rateLimit|too many certificates|Le_OrderFinalize'; then
+      warn "Let's Encrypt 可能触发了签发频率限制；如果之前已签发过这组域名，请等待限流结束或直接复用现有证书"
+      error "双域名证书申请失败"
+    else
+      error "双域名证书申请失败"
+    fi
+  fi
 fi
 
 echo ""
@@ -305,6 +344,18 @@ http {
         ssl_certificate /etc/ssl/private/fullchain.cer;
         ssl_certificate_key /etc/ssl/private/private.key;
 
+        location ^~ /sub/ {
+            root /usr/local/nginx/html;
+            try_files \$uri =404;
+            autoindex off;
+            types {
+                text/plain txt;
+                application/yaml yaml yml;
+            }
+            default_type text/plain;
+            add_header Cache-Control "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0" always;
+        }
+
         location / {
             proxy_pass https://www.stanford.edu;
             proxy_set_header Host www.stanford.edu;
@@ -322,6 +373,18 @@ http {
 
         ssl_certificate /etc/ssl/private/fullchain.cer;
         ssl_certificate_key /etc/ssl/private/private.key;
+
+        location ^~ /sub/ {
+            root /usr/local/nginx/html;
+            try_files \$uri =404;
+            autoindex off;
+            types {
+                text/plain txt;
+                application/yaml yaml yml;
+            }
+            default_type text/plain;
+            add_header Cache-Control "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0" always;
+        }
 
         location / {
             proxy_pass https://www.harvard.edu;
@@ -475,8 +538,11 @@ xray -test -config /usr/local/etc/xray/config.json
 info "启动服务..."
 systemctl restart xray
 systemctl restart nginx
-systemctl is-active --quiet xray && info "Xray 运行中" || warn "Xray 启动失败"
-systemctl is-active --quiet nginx && info "Nginx 运行中" || warn "Nginx 启动失败"
+sleep 1
+systemctl is-active --quiet xray || error "Xray 启动失败"
+systemctl is-active --quiet nginx || error "Nginx 启动失败"
+info "Xray 运行中"
+info "Nginx 运行中"
 
 echo ""
 
@@ -1087,6 +1153,60 @@ rules:
   - MATCH,漏网之鱼
 MIHOMOEOF
 
+SUB_CONF_DIR="/etc/xhttp-cdn"
+SUB_TOKEN_FILE="${SUB_CONF_DIR}/sub_token"
+install -d -m 700 "$SUB_CONF_DIR"
+if [[ -f "$SUB_TOKEN_FILE" ]]; then
+  SUB_TOKEN=$(tr -d '\r\n' < "$SUB_TOKEN_FILE")
+else
+  SUB_TOKEN=$(openssl rand -hex 16)
+  echo "$SUB_TOKEN" > "$SUB_TOKEN_FILE"
+  chmod 600 "$SUB_TOKEN_FILE"
+fi
+
+SUB_DIR="/usr/local/nginx/html/sub/${SUB_TOKEN}"
+install -d -m 755 "$SUB_DIR"
+cp "$USER_HOME/client-config.txt" "$SUB_DIR/v2rayn-raw.txt"
+base64 "$USER_HOME/client-config.txt" | tr -d '\n' > "$SUB_DIR/v2rayn.txt"
+cp "$USER_HOME/client-config-mihomo.yaml" "$SUB_DIR/mihomo.yaml"
+
+SUB_BASE_DOMAIN="${CDN_DOMAIN}"
+V2RAYN_SUB_URL="https://${SUB_BASE_DOMAIN}/sub/${SUB_TOKEN}/v2rayn.txt"
+MIHOMO_SUB_URL="https://${SUB_BASE_DOMAIN}/sub/${SUB_TOKEN}/mihomo.yaml"
+
+check_subscription_url() {
+  local domain="$1"
+  local path="$2"
+  local expected_file="$3"
+  local label="$4"
+  local tmp_body tmp_head http_code
+
+  tmp_body=$(mktemp)
+  tmp_head=$(mktemp)
+
+  http_code=$(curl -k -sS --resolve "${domain}:443:127.0.0.1" \
+    -D "$tmp_head" -o "$tmp_body" -w "%{http_code}" "https://${domain}${path}" || true)
+
+  if [[ "$http_code" != "200" ]]; then
+    warn "${label} 订阅自检失败，HTTP 状态码: ${http_code}"
+    cat "$tmp_head" || true
+    rm -f "$tmp_body" "$tmp_head"
+    error "${label} 订阅链接不可用，请检查 Nginx / Xray / 域名配置"
+  fi
+
+  if ! cmp -s "$expected_file" "$tmp_body"; then
+    rm -f "$tmp_body" "$tmp_head"
+    error "${label} 订阅自检失败，返回内容与落盘文件不一致"
+  fi
+
+  rm -f "$tmp_body" "$tmp_head"
+}
+
+info "验证订阅链接..."
+check_subscription_url "$SUB_BASE_DOMAIN" "/sub/${SUB_TOKEN}/v2rayn.txt" "$SUB_DIR/v2rayn.txt" "V2RayN"
+check_subscription_url "$SUB_BASE_DOMAIN" "/sub/${SUB_TOKEN}/mihomo.yaml" "$SUB_DIR/mihomo.yaml" "Mihomo"
+info "订阅链接自检通过"
+
 echo -e "\n${CYAN}[+] 部署完成${NC}\n"
 echo -e "${YELLOW}[+] 服务端参数${NC}"
 echo "Reality 域名:   $REALITY_DOMAIN"
@@ -1109,6 +1229,10 @@ cat "$USER_HOME/client-config-mihomo.yaml"
 echo ""
 info "V2rayN 请导入 $USER_HOME/client-config.txt"
 info "Mihomo 请导入 $USER_HOME/client-config-mihomo.yaml"
+echo ""
+echo -e "${YELLOW}[+] 订阅链接（Ctrl Shift + C 复制）${NC}"
+echo "V2RayN 订阅: $V2RAYN_SUB_URL"
+echo "Mihomo 订阅: $MIHOMO_SUB_URL"
 echo ""
 echo -e "${YELLOW}[+] 建议: 在 Cloudflare 配置缓存规则绕过 XHTTP 路径${NC}"
 echo "  Cloudflare → 缓存 → Cache Rules → 创建缓存规则"
