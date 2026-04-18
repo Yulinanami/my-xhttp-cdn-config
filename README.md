@@ -29,6 +29,8 @@ wget -O install.sh https://raw.githubusercontent.com/Yulinanami/my-xhttp-cdn-con
 - `~/client-config.txt`：V2rayN / Xray URI 节点
 - `~/client-config-mihomo.yaml`：Mihomo 可直接导入的 YAML 配置
 
+同时会输出订阅地址，默认使用 `REALITY_DOMAIN`。
+
 **前置条件**：运行脚本前需在 Cloudflare 完成以下设置：
 1. Reality 域名 DNS → 仅 DNS（灰色云朵）
 2. CDN 域名 DNS → 代理开启（橙色云朵）
@@ -133,16 +135,16 @@ graph TD
 
 ### 订阅链接获取流程
 
-脚本会在 `/usr/local/nginx/html/sub/` 目录下生成随机 Token 文件夹，存放客户端配置文件。当通过浏览器或代理客户端请求订阅链接时，流量会经由 Nginx 处理。
+脚本会在 `/usr/local/nginx/html/sub/` 目录下生成随机 Token 文件夹，存放客户端配置文件。默认订阅地址为：
+
+- `https://REALITY_DOMAIN/sub/TOKEN/v2rayn.txt`
+- `https://REALITY_DOMAIN/sub/TOKEN/mihomo.yaml`
 
 ```mermaid
 graph TD
 	SUB_START("客户端请求订阅链接")
 	
-	SUB_START -->|"通过 CDN 请求<br/>https://CDN_DOMAIN/sub/TOKEN/..."| SUB_CF["Cloudflare CDN"]
-	SUB_START -->|"直接请求真实IP (可选)<br/>https://REALITY_DOMAIN/sub/TOKEN/..."| SUB_XR443["Xray 443<br/>(VPS 监听)"]
-
-	SUB_CF -->|"回源 VPS:443<br/>SNI 为 CDN_DOMAIN"| SUB_XR443
+	SUB_START -->|"直接请求<br/>https://REALITY_DOMAIN/sub/TOKEN/..."| SUB_XR443["Xray 443<br/>(VPS 监听)"]
 	
 	SUB_XR443 -->|"普通 TLS 握手<br/>转发至 target:8003"| SUB_NG8003["Nginx 8003<br/>(处理 HTTPS)"]
 	

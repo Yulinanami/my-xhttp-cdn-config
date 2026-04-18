@@ -374,18 +374,6 @@ http {
         ssl_certificate /etc/ssl/private/fullchain.cer;
         ssl_certificate_key /etc/ssl/private/private.key;
 
-        location ^~ /sub/ {
-            root /usr/local/nginx/html;
-            try_files \$uri =404;
-            autoindex off;
-            types {
-                text/plain txt;
-                application/yaml yaml yml;
-            }
-            default_type text/plain;
-            add_header Cache-Control "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0" always;
-        }
-
         location / {
             proxy_pass https://www.harvard.edu;
             proxy_set_header Host www.harvard.edu;
@@ -1170,9 +1158,9 @@ cp "$USER_HOME/client-config.txt" "$SUB_DIR/v2rayn-raw.txt"
 base64 "$USER_HOME/client-config.txt" | tr -d '\n' > "$SUB_DIR/v2rayn.txt"
 cp "$USER_HOME/client-config-mihomo.yaml" "$SUB_DIR/mihomo.yaml"
 
-SUB_BASE_DOMAIN="${CDN_DOMAIN}"
-V2RAYN_SUB_URL="https://${SUB_BASE_DOMAIN}/sub/${SUB_TOKEN}/v2rayn.txt"
-MIHOMO_SUB_URL="https://${SUB_BASE_DOMAIN}/sub/${SUB_TOKEN}/mihomo.yaml"
+SUB_DIRECT_DOMAIN="${REALITY_DOMAIN}"
+V2RAYN_SUB_URL="https://${SUB_DIRECT_DOMAIN}/sub/${SUB_TOKEN}/v2rayn.txt"
+MIHOMO_SUB_URL="https://${SUB_DIRECT_DOMAIN}/sub/${SUB_TOKEN}/mihomo.yaml"
 
 check_subscription_url() {
   local domain="$1"
@@ -1203,8 +1191,8 @@ check_subscription_url() {
 }
 
 info "验证订阅链接..."
-check_subscription_url "$SUB_BASE_DOMAIN" "/sub/${SUB_TOKEN}/v2rayn.txt" "$SUB_DIR/v2rayn.txt" "V2RayN"
-check_subscription_url "$SUB_BASE_DOMAIN" "/sub/${SUB_TOKEN}/mihomo.yaml" "$SUB_DIR/mihomo.yaml" "Mihomo"
+check_subscription_url "$SUB_DIRECT_DOMAIN" "/sub/${SUB_TOKEN}/v2rayn.txt" "$SUB_DIR/v2rayn.txt" "V2RayN(直连订阅)"
+check_subscription_url "$SUB_DIRECT_DOMAIN" "/sub/${SUB_TOKEN}/mihomo.yaml" "$SUB_DIR/mihomo.yaml" "Mihomo(直连订阅)"
 info "订阅链接自检通过"
 
 echo -e "\n${CYAN}[+] 部署完成${NC}\n"
@@ -1233,6 +1221,7 @@ echo ""
 echo -e "${YELLOW}[+] 订阅链接（Ctrl Shift + C 复制）${NC}"
 echo "V2RayN 订阅: $V2RAYN_SUB_URL"
 echo "Mihomo 订阅: $MIHOMO_SUB_URL"
+info "订阅链接默认使用直连域名，适合客户端首次导入"
 echo ""
 echo -e "${YELLOW}[+] 建议: 在 Cloudflare 配置缓存规则绕过 XHTTP 路径${NC}"
 echo "  Cloudflare → 缓存 → Cache Rules → 创建缓存规则"
