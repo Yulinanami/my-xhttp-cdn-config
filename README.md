@@ -131,6 +131,32 @@ graph TD
 	RESP -->|"模式 5 下行<br/>XHTTP+TLS+CDN"| R5XR8001["Xray 8001"] --> DS5RNG["Nginx 8003<br/>grpc 响应"] --> DS5R443["Xray 443"] --> DS5RCDN["Cloudflare CDN"] --> DS5RFW["穿过防火墙"] --> CLIENT
 ```
 
+### 订阅链接获取流程
+
+脚本会在 `/usr/local/nginx/html/sub/` 目录下生成随机 Token 文件夹，存放客户端配置文件。当通过浏览器或代理客户端请求订阅链接时，流量会经由 Nginx 处理。
+
+```mermaid
+graph TD
+	SUB_START("客户端请求订阅链接")
+	
+	SUB_START -->|"通过 CDN 请求<br/>https://CDN_DOMAIN/sub/TOKEN/..."| SUB_CF["Cloudflare CDN"]
+	SUB_START -->|"直接请求真实IP (可选)<br/>https://REALITY_DOMAIN/sub/TOKEN/..."| SUB_XR443["Xray 443<br/>(VPS 监听)"]
+
+	SUB_CF -->|"回源 VPS:443<br/>SNI 为 CDN_DOMAIN"| SUB_XR443
+	
+	SUB_XR443 -->|"普通 TLS 握手<br/>转发至 target:8003"| SUB_NG8003["Nginx 8003<br/>(处理 HTTPS)"]
+	
+	SUB_NG8003 -->|"解析 HTTP URI"| SUB_NG_MATCH{"匹配 Nginx location"}
+	
+	SUB_NG_MATCH -->|"1. 匹配 location ^~ /sub/<br/>(订阅链接路径)"| SUB_NG_STATIC["静态文件处理<br/>root /usr/local/nginx/html"]
+	SUB_NG_MATCH -->|"2. 匹配 location /XHTTP_PATH<br/>(代理流量)"| SUB_NG_GRPC["grpc_pass 至 127.0.0.1:8001<br/>交由 Xray 处理"]
+	SUB_NG_MATCH -->|"3. 匹配 location /<br/>(主动探测防范)"| SUB_NG_PROXY["proxy_pass 伪装站<br/>(哈佛/斯坦福)"]
+	
+	SUB_NG_STATIC -->|"读取对应配置"| SUB_FILE[("/usr/local/nginx/html/sub/TOKEN/<br/>v2rayn.txt 或 mihomo.yaml")]
+	
+	SUB_FILE -->|"返回文件内容"| SUB_END("客户端成功获取订阅配置")
+```
+
 ## 注意事项
 
 - 文档中的占位符需要全部替换后再使用。
