@@ -26,10 +26,13 @@ wget -O install.sh https://raw.githubusercontent.com/Yulinanami/my-xhttp-cdn-con
 
 脚本会提示输入两个域名，其余参数（UUID、密钥、shortId、路径）全部自动生成。完成后会同时生成：
 
-- `~/client-config.txt`：V2rayN / Xray URI 节点
+- `~/client-config.txt`：V2rayN / Shadowrocket 可用的 Xray URI 节点
 - `~/client-config-mihomo.yaml`：Mihomo 可直接导入的 YAML 配置
 
-同时会输出订阅地址，默认使用 `REALITY_DOMAIN`。
+同时会输出订阅地址，默认使用 `REALITY_DOMAIN`：
+
+- `v2rayn.txt`：适用于 **V2RayN / Shadowrocket**
+- `mihomo.yaml`：适用于 **Mihomo**
 
 **前置条件**：运行脚本前需在 Cloudflare 完成以下设置：
 1. Reality 域名 DNS → 仅 DNS（灰色云朵）

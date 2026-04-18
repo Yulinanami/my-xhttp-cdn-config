@@ -106,6 +106,12 @@ command -v socat   >/dev/null 2>&1 || pkg_install socat
 command -v wget    >/dev/null 2>&1 || pkg_install wget
 command -v tar     >/dev/null 2>&1 || pkg_install tar
 command -v openssl >/dev/null 2>&1 || pkg_install openssl
+if ! command -v qrencode >/dev/null 2>&1; then
+  info "安装二维码工具 qrencode..."
+  if ! pkg_install qrencode; then
+    warn "qrencode 安装失败，将跳过二维码输出"
+  fi
+fi
 
 if ! command -v crontab >/dev/null 2>&1; then
   case "$OS_ID" in
@@ -1161,6 +1167,28 @@ cp "$USER_HOME/client-config-mihomo.yaml" "$SUB_DIR/mihomo.yaml"
 SUB_DIRECT_DOMAIN="${REALITY_DOMAIN}"
 V2RAYN_SUB_URL="https://${SUB_DIRECT_DOMAIN}/sub/${SUB_TOKEN}/v2rayn.txt"
 MIHOMO_SUB_URL="https://${SUB_DIRECT_DOMAIN}/sub/${SUB_TOKEN}/mihomo.yaml"
+V2RAYN_QR_FILE="${USER_HOME}/subscription-v2rayn.png"
+MIHOMO_QR_FILE="${USER_HOME}/subscription-mihomo.png"
+
+print_subscription_qr() {
+  local label="$1"
+  local url="$2"
+
+  command -v qrencode >/dev/null 2>&1 || return 1
+
+  echo -e "${YELLOW}[+] ${label} 订阅二维码（手机可直接扫描导入）${NC}"
+  qrencode -t ANSIUTF8 -m 1 "$url"
+  echo ""
+}
+
+save_subscription_qr_png() {
+  local url="$1"
+  local output_file="$2"
+
+  command -v qrencode >/dev/null 2>&1 || return 1
+
+  qrencode -o "$output_file" -s 8 -m 2 "$url"
+}
 
 check_subscription_url() {
   local domain="$1"
@@ -1219,10 +1247,23 @@ info "V2rayN 请导入 $USER_HOME/client-config.txt"
 info "Mihomo 请导入 $USER_HOME/client-config-mihomo.yaml"
 echo ""
 echo -e "${YELLOW}[+] 订阅链接（Ctrl Shift + C 复制）${NC}"
-echo "V2RayN 订阅: $V2RAYN_SUB_URL"
+echo "V2RayN / Shadowrocket 订阅: $V2RAYN_SUB_URL"
 echo "Mihomo 订阅: $MIHOMO_SUB_URL"
 info "订阅链接默认使用直连域名，适合客户端首次导入"
 echo ""
+
+if command -v qrencode >/dev/null 2>&1; then
+  save_subscription_qr_png "$V2RAYN_SUB_URL" "$V2RAYN_QR_FILE" && \
+    info "V2RayN / Shadowrocket 订阅二维码 PNG 已保存到 $V2RAYN_QR_FILE"
+  save_subscription_qr_png "$MIHOMO_SUB_URL" "$MIHOMO_QR_FILE" && \
+    info "Mihomo 订阅二维码 PNG 已保存到 $MIHOMO_QR_FILE"
+  echo ""
+  print_subscription_qr "V2RayN / Shadowrocket" "$V2RAYN_SUB_URL"
+  print_subscription_qr "Mihomo" "$MIHOMO_SUB_URL"
+else
+  warn "未检测到 qrencode，已跳过订阅二维码输出"
+fi
+
 echo -e "${YELLOW}[+] 建议: 在 Cloudflare 配置缓存规则绕过 XHTTP 路径${NC}"
 echo "  Cloudflare → 缓存 → Cache Rules → 创建缓存规则"
 echo "  选择「自定义筛选表达式」→ 点击「编辑表达式」→ 输入:"
