@@ -92,8 +92,53 @@ read -rp "请选择 IP 类型 [1/2] (默认 1): " IP_CHOICE
 IP_CHOICE=${IP_CHOICE:-1}
 
 echo ""
+echo -e "${YELLOW}[+] 主动探测回落网站（建议用 VPS 所在地区选择当地大学官网，伪装能力更好）${NC}"
+read -rp "请输入 Reality 域名回落网站 [默认 https://www.stanford.edu]: " REALITY_FALLBACK_URL
+REALITY_FALLBACK_URL=${REALITY_FALLBACK_URL:-https://www.stanford.edu}
+read -rp "请输入 CDN 域名回落网站 [默认 https://www.harvard.edu]: " CDN_FALLBACK_URL
+CDN_FALLBACK_URL=${CDN_FALLBACK_URL:-https://www.harvard.edu}
+
+normalize_proxy_origin() {
+  local url="$1"
+  local scheme rest host
+
+  [[ "$url" =~ ^https?:// ]] || url="https://${url}"
+  scheme="${url%%://*}"
+  rest="${url#*://}"
+  host="${rest%%/*}"
+  host="${host%%\?*}"
+  host="${host%%\#*}"
+
+  [[ -n "$host" ]] || return 1
+  echo "${scheme}://${host}"
+}
+
+extract_host_from_url() {
+  local url="$1"
+  url="${url#*://}"
+  url="${url%%/*}"
+  echo "$url"
+}
+
+REALITY_FALLBACK_ORIGIN=$(normalize_proxy_origin "$REALITY_FALLBACK_URL") || error "Reality 回落网站格式无效"
+CDN_FALLBACK_ORIGIN=$(normalize_proxy_origin "$CDN_FALLBACK_URL") || error "CDN 回落网站格式无效"
+REALITY_FALLBACK_HOST=$(extract_host_from_url "$REALITY_FALLBACK_ORIGIN")
+CDN_FALLBACK_HOST=$(extract_host_from_url "$CDN_FALLBACK_ORIGIN")
+[[ -z "$REALITY_FALLBACK_HOST" ]] && error "Reality 回落网站格式无效"
+[[ -z "$CDN_FALLBACK_HOST" ]] && error "CDN 回落网站格式无效"
+
+if [[ "$REALITY_FALLBACK_URL" != "$REALITY_FALLBACK_ORIGIN" ]]; then
+  warn "Reality 回落网站已忽略路径部分，实际反代目标: $REALITY_FALLBACK_ORIGIN"
+fi
+if [[ "$CDN_FALLBACK_URL" != "$CDN_FALLBACK_ORIGIN" ]]; then
+  warn "CDN 回落网站已忽略路径部分，实际反代目标: $CDN_FALLBACK_ORIGIN"
+fi
+
+echo ""
 info "Reality: $REALITY_DOMAIN"
 info "CDN:     $CDN_DOMAIN"
+info "Reality 回落网站: $REALITY_FALLBACK_ORIGIN"
+info "CDN 回落网站:     $CDN_FALLBACK_ORIGIN"
 echo ""
 
 info "[1/6] 安装基础环境"
@@ -363,8 +408,13 @@ http {
         }
 
         location / {
-            proxy_pass https://www.stanford.edu;
-            proxy_set_header Host www.stanford.edu;
+            proxy_pass ${REALITY_FALLBACK_ORIGIN};
+            proxy_ssl_server_name on;
+            proxy_ssl_name ${REALITY_FALLBACK_HOST};
+            proxy_redirect ${REALITY_FALLBACK_ORIGIN}/ https://\$host/;
+            proxy_redirect http://${REALITY_FALLBACK_HOST}/ https://\$host/;
+            proxy_redirect https://${REALITY_FALLBACK_HOST}/ https://\$host/;
+            proxy_set_header Host ${REALITY_FALLBACK_HOST};
             proxy_set_header X-Real-IP \$remote_addr;
             proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
             proxy_set_header X-Forwarded-Proto \$scheme;
@@ -381,8 +431,13 @@ http {
         ssl_certificate_key /etc/ssl/private/private.key;
 
         location / {
-            proxy_pass https://www.harvard.edu;
-            proxy_set_header Host www.harvard.edu;
+            proxy_pass ${CDN_FALLBACK_ORIGIN};
+            proxy_ssl_server_name on;
+            proxy_ssl_name ${CDN_FALLBACK_HOST};
+            proxy_redirect ${CDN_FALLBACK_ORIGIN}/ https://\$host/;
+            proxy_redirect http://${CDN_FALLBACK_HOST}/ https://\$host/;
+            proxy_redirect https://${CDN_FALLBACK_HOST}/ https://\$host/;
+            proxy_set_header Host ${CDN_FALLBACK_HOST};
             proxy_set_header X-Real-IP \$remote_addr;
             proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
             proxy_set_header X-Forwarded-Proto \$scheme;
@@ -1169,6 +1224,7 @@ V2RAYN_SUB_URL="https://${SUB_DIRECT_DOMAIN}/sub/${SUB_TOKEN}/v2rayn.txt"
 MIHOMO_SUB_URL="https://${SUB_DIRECT_DOMAIN}/sub/${SUB_TOKEN}/mihomo.yaml"
 V2RAYN_QR_FILE="${USER_HOME}/subscription-v2rayn.png"
 MIHOMO_QR_FILE="${USER_HOME}/subscription-mihomo.png"
+SUB_LINKS_FILE="${USER_HOME}/subscription-links.txt"
 
 print_subscription_qr() {
   local label="$1"
@@ -1223,10 +1279,24 @@ check_subscription_url "$SUB_DIRECT_DOMAIN" "/sub/${SUB_TOKEN}/v2rayn.txt" "$SUB
 check_subscription_url "$SUB_DIRECT_DOMAIN" "/sub/${SUB_TOKEN}/mihomo.yaml" "$SUB_DIR/mihomo.yaml" "Mihomo(直连订阅)"
 info "订阅链接自检通过"
 
+cat > "$SUB_LINKS_FILE" << SUBLINKEOF
+V2RayN / Shadowrocket 订阅:
+$V2RAYN_SUB_URL
+
+Mihomo 订阅:
+$MIHOMO_SUB_URL
+
+二维码 PNG 文件:
+V2RayN / Shadowrocket: $V2RAYN_QR_FILE
+Mihomo: $MIHOMO_QR_FILE
+SUBLINKEOF
+
 echo -e "\n${CYAN}[+] 部署完成${NC}\n"
 echo -e "${YELLOW}[+] 服务端参数${NC}"
 echo "Reality 域名:   $REALITY_DOMAIN"
 echo "CDN 域名:       $CDN_DOMAIN"
+echo "Reality 回落网站: $REALITY_FALLBACK_ORIGIN"
+echo "CDN 回落网站:    $CDN_FALLBACK_ORIGIN"
 echo "VPS IP:         $VPS_IP"
 echo "UUID1 (Vision): $UUID1"
 echo "UUID2 (XHTTP):  $UUID2"
@@ -1249,6 +1319,7 @@ echo ""
 echo -e "${YELLOW}[+] 订阅链接（Ctrl Shift + C 复制）${NC}"
 echo "V2RayN / Shadowrocket 订阅: $V2RAYN_SUB_URL"
 echo "Mihomo 订阅: $MIHOMO_SUB_URL"
+info "订阅链接已保存到 $SUB_LINKS_FILE"
 info "订阅链接默认使用直连域名，适合客户端首次导入"
 echo ""
 

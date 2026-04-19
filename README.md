@@ -1,7 +1,8 @@
 # XHTTP + CDN 配置指南
 
 这个仓库用于整理一套基于 Xray-core 的 XHTTP + CDN 搭建方案，覆盖环境准备、服务端配置和客户端模板三部分内容。
-支持小火箭、Xray和Mihomo客户端。
+支持小火箭、Xray和Mihomo客户端，支持IPv4和IPv6。
+> **提示**：推荐使用全新未搭建过类似服务的机器，这样可以避免很多隐形冲突。
 
 ## 仓库文档
 
@@ -24,6 +25,7 @@ bash <(curl -fsSL https://raw.githubusercontent.com/Yulinanami/my-xhttp-cdn-conf
 ```bash
 wget -O install.sh https://raw.githubusercontent.com/Yulinanami/my-xhttp-cdn-config/refs/heads/master/install.sh && bash install.sh
 ```
+> **提示**：脚本可以重新执行即可更新域名、回落网站等参数。
 
 脚本会提示输入两个域名，其余参数（UUID、密钥、shortId、路径）全部自动生成。完成后会同时生成：
 
@@ -34,6 +36,89 @@ wget -O install.sh https://raw.githubusercontent.com/Yulinanami/my-xhttp-cdn-con
 
 - `v2rayn.txt`：适用于 **V2RayN / Shadowrocket**
 - `mihomo.yaml`：适用于 **Mihomo**
+- `~/subscription-links.txt`：订阅链接汇总
+- `~/subscription-v2rayn.png`：V2RayN / Shadowrocket 订阅二维码
+- `~/subscription-mihomo.png`：Mihomo 订阅二维码
+
+### 脚本主要流程
+
+大致执行流程如下：
+
+1. **读取输入参数**
+   - Reality 域名
+   - CDN 域名
+   - IPv4 / IPv6
+   - Reality 回落网站
+   - CDN 回落网站
+
+2. **规范化回落网站**
+   - 支持输入域名或完整 URL
+   - 会自动忽略路径、查询参数、片段，只保留根站
+   - 自动提取上游 `Host`
+   - 后续写入 Nginx 时自动启用 `proxy_ssl_server_name on;` 与 `proxy_ssl_name`
+   - 自动加入 `proxy_redirect`，避免浏览器跳到内部端口 `:8003`
+
+3. **安装 / 检查基础依赖**
+   - curl / sudo / socat / wget / tar / openssl
+   - cron（用于证书自动续期）
+   - qrencode（用于订阅二维码输出）
+
+4. **安装或更新 Xray**
+   - 调用官方安装脚本安装 / 更新 Xray
+   - 自动准备 systemd 服务
+
+5. **自动生成运行参数**
+   - UUID1（Vision）
+   - UUID2（XHTTP）
+   - X25519 公私钥
+   - shortId
+   - XHTTP path
+   - VLESS Encryption / Decryption 密钥
+   - 自动获取当前 VPS 的 IPv4 或 IPv6 地址
+
+6. **申请或复用双域名证书**
+   - 使用 `acme.sh` 为 `REALITY_DOMAIN + CDN_DOMAIN` 申请双域名证书
+   - 如果检测到当前这组域名已有可复用证书，则直接复用
+   - 证书最终安装到固定路径：
+     - `/etc/ssl/private/fullchain.cer`
+     - `/etc/ssl/private/private.key`
+
+7. **配置证书自动续期**
+   - `acme.sh` 安装时会写入自动续期任务
+   - 脚本使用 `acme.sh --install-cert ... --reloadcmd "systemctl restart nginx"` 安装证书
+
+8. **重写 Nginx 配置**
+   - 直接覆盖 `/etc/nginx/nginx.conf`
+   - Reality 域名：
+     - 负责直连订阅下载
+     - 负责主动探测回落伪装
+   - CDN 域名：
+     - 负责 CDN 流量入口
+     - 负责主动探测回落伪装
+
+9. **重写 Xray 配置**
+   - 直接覆盖 `/usr/local/etc/xray/config.json`
+   - 写入 Vision、XHTTP、Reality、CDN 相关入站与出站配置
+
+10. **配置测试并启动服务**
+   - 执行 `nginx -t`
+   - 执行 `xray -test -config /usr/local/etc/xray/config.json`
+   - 测试通过后重启 `xray` 与 `nginx`
+
+11. **生成客户端文件**
+   - `~/client-config.txt`
+   - `~/client-config-mihomo.yaml`
+
+12. **生成订阅文件**
+   - 订阅目录位于 `/usr/local/nginx/html/sub/TOKEN/`
+   - 默认复用 `/etc/xhttp-cdn/sub_token` 中已有 token
+   - 如果是首次部署，则自动生成 token
+
+13. **生成订阅摘要与二维码**
+   - `~/subscription-links.txt`
+   - `~/subscription-v2rayn.png`
+   - `~/subscription-mihomo.png`
+   - 同时在终端打印二维码，方便手机扫描导入
 
 **前置条件**：运行脚本前需在 Cloudflare 完成以下设置：
 1. Reality 域名 DNS → 仅 DNS（灰色云朵）
