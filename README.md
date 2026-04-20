@@ -1,18 +1,32 @@
-# XHTTP + CDN 配置指南
+# XHTTP + CDN 上下行分离配置指南
 
 这个仓库用于整理一套基于 Xray-core 的 XHTTP + CDN 搭建方案，覆盖环境准备、服务端配置和客户端模板三部分内容。
 支持小火箭、Xray和Mihomo客户端，支持IPv4和IPv6。
 > **提示**：推荐使用全新未搭建过类似服务的机器，这样可以避免很多隐形冲突。
+> **注意**：教程使用 VLESS Encryption，客户端（V2rayN、Mihomo客户端）也需要更新到支持 vlessenc / xhttp 的新版本。
+> **Mihomo 版本要求**：客户端Mihomo内核版本≥`1.19.23`。
 
-## 仓库文档
+## 模式
 
-- [1.环境配置.md](./1.环境配置.md)：环境准备、Cloudflare 前置设置、Acme.sh 证书申请、Nginx 编译安装。
-- [2.文件配置.md](./2.文件配置.md)：Nginx 反向代理配置、Xray 服务端配置。
-- [客户端模板.txt](./客户端模板.txt)：客户端连接模板，包含 5 种常见连接模式。
-- [客户端模板-mihomo.yaml](./客户端模板-mihomo.yaml)：Mihomo 客户端完整 YAML 模板。
-- [install.sh](./install.sh)：一键部署脚本，自动完成全部安装配置并生成 V2rayN / Mihomo 客户端配置。
+仓库文档用于搭建包含以下 5 种模式：
+
+1. Reality Vision 直连
+2. XHTTP + Reality 上下行不分离
+3. 上行 XHTTP + TLS + CDN，下行 XHTTP + Reality
+4. XHTTP + TLS 双向 CDN
+5. 上行 XHTTP + Reality，下行 XHTTP + TLS + CDN
+
+---
 
 ## 一键部署
+
+> **前置条件**：运行脚本前需在 Cloudflare 完成以下设置：
+> 1. Reality 域名 DNS → 仅 DNS（灰色云朵）
+> 2. CDN 域名 DNS → 代理开启（橙色云朵）
+> 3. SSL/TLS 加密 → 完全（严格）
+> 4. 网络 → gRPC → 已开启
+> 5. 缓存规则（建议） → 将 XHTTP 路径设为绕过缓存，具体步骤请参考Github仓库的 [环境配置.md](./1.环境配置.md)。
+> 6. [install.sh](./install.sh)：一键部署脚本，自动完成全部安装配置并生成 V2rayN / Mihomo 客户端配置。
 
 在 VPS (Debian/Ubuntu) 上执行：
 
@@ -51,7 +65,7 @@ wget -O install.sh https://raw.githubusercontent.com/Yulinanami/my-xhttp-cdn-con
    - Reality 回落网站
    - CDN 回落网站
 
-2. **规范化回落网站**
+2. **提取回落网站URL**
    - 支持输入域名或完整 URL
    - 会自动忽略路径、查询参数、片段，只保留根站
    - 自动提取上游 `Host`
@@ -120,16 +134,7 @@ wget -O install.sh https://raw.githubusercontent.com/Yulinanami/my-xhttp-cdn-con
    - `~/subscription-mihomo.png`
    - 同时在终端打印二维码，方便手机扫描导入
 
-**前置条件**：运行脚本前需在 Cloudflare 完成以下设置：
-1. Reality 域名 DNS → 仅 DNS（灰色云朵）
-2. CDN 域名 DNS → 代理开启（橙色云朵）
-3. SSL/TLS 加密 → 完全（严格）
-4. 网络 → gRPC → 已开启
-5. 缓存规则（建议） → 将 XHTTP 路径设为绕过缓存，具体步骤请参考Github仓库的[环境配置.md](./1.环境配置.md)。
 
-> **注意**：教程使用 VLESS Encryption，客户端（V2rayN、Mihomo客户端）也需要更新到支持 vlessenc / xhttp 的新版本。
->
-> **Mihomo 版本要求**：建议直接使用 **Mihomo v1.19.23或更新版本**。
 
 ## 手动部署
 
@@ -139,23 +144,14 @@ wget -O install.sh https://raw.githubusercontent.com/Yulinanami/my-xhttp-cdn-con
 2. [文件配置.md](./2.文件配置.md)，完成 Nginx 与 Xray 配置，并执行测试与重启命令。
 3. [客户端模板.txt](./客户端模板.txt)，复制到 V2rayN，替换 `YOUR_*` 占位符后使用。
 4. [客户端模板-mihomo.yaml](./客户端模板-mihomo.yaml)，Mihomo内核客户端的配置文件，替换 `YOUR_*` 占位符后导入。
-5. 如需核对 Mihomo 字段来源，可先阅读 [docs/mihomo-official/README.md](./docs/mihomo-official/README.md)。
 
-## 模式
-
-[客户端模板.txt](./客户端模板.txt) 与 [客户端模板-mihomo.yaml](./客户端模板-mihomo.yaml) 当前都包含以下 5 种模式：
-
-1. Reality Vision 直连
-2. XHTTP + Reality 上下行不分离
-3. 上行 XHTTP + TLS + CDN，下行 XHTTP + Reality
-4. XHTTP + TLS 双向 CDN
-5. 上行 XHTTP + Reality，下行 XHTTP + TLS + CDN
-
-## 安全特性
+## 安全
 
 - **VLESS Encryption (vlessenc)**：脚本自动启用 VLESS Encryption，在 VLESS 协议层增加端到端加密（ML-KEM-768 + X25519 后量子安全算法 + PFS），防止 CDN 中间人解密流量内容
-- **Reality**：直连模式使用 REALITY 协议，防止主动探测
 - 仅对 XHTTP 入站启用 vlessenc（因为只有它过 CDN），Vision 直连不需要
+- 把来自防火墙的主动探测默认转发到斯坦福和哈佛的官网来进行伪装（建议根据自己VPS的所在地区来修改，改成你VPS所在地的大学官网伪装能力会更好）
+
+---
 
 ## 流程图（去程 + 回程）
 
@@ -248,9 +244,7 @@ graph TD
 	SUB_FILE -->|"返回文件内容"| SUB_END("客户端成功获取订阅配置")
 ```
 
-## 注意事项
-
-- 文档中的占位符需要全部替换后再使用。
+---
 
 ## 参考资料
 
