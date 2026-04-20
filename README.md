@@ -4,7 +4,7 @@
 支持小火箭、Xray和Mihomo客户端，支持IPv4和IPv6。
 > **提示**：推荐使用全新未搭建过类似服务的机器，这样可以避免很多隐形冲突。
 > **注意**：教程使用 VLESS Encryption，客户端（V2rayN、Mihomo客户端）也需要更新到支持 vlessenc / xhttp 的新版本。
-> **Mihomo 版本要求**：客户端Mihomo内核版本≥`1.19.23`。
+> **Mihomo 版本要求**：客户端Mihomo内核版本≥`1.19.24`。
 
 ## 模式
 

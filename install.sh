@@ -699,10 +699,16 @@ proxies:
     xhttp-opts:
       path: "${XHTTP_PATH}"
       mode: auto
+      x-padding-obfs-mode: true
+      x-padding-key: x_padding
+      x-padding-header: Referer
+      x-padding-placement: queryInHeader
+      x-padding-method: tokenish
       reuse-settings:
         max-concurrency: "16-32"
         c-max-reuse-times: "0"
         h-max-reusable-secs: "1800-3000"
+        h-keep-alive-period: 0
 
   - name: "上行 xhttp+TLS+CDN | 下行 xhttp+Reality"
     type: vless
@@ -722,10 +728,17 @@ proxies:
       host: "${CDN_DOMAIN}"
       path: "${XHTTP_PATH}"
       mode: auto
+      x-padding-obfs-mode: true
+      x-padding-key: x_padding
+      x-padding-header: Referer
+      x-padding-placement: queryInHeader
+      x-padding-method: tokenish
+      sc-min-posts-interval-ms: 30
       reuse-settings:
         max-concurrency: "16-32"
         c-max-reuse-times: "0"
         h-max-reusable-secs: "1800-3000"
+        h-keep-alive-period: 0
       download-settings:
         path: "${XHTTP_PATH}"
         server: "${VPS_IP}"
@@ -735,6 +748,11 @@ proxies:
           - h2
         servername: "${REALITY_DOMAIN}"
         client-fingerprint: chrome
+        x-padding-obfs-mode: true
+        x-padding-key: x_padding
+        x-padding-header: Referer
+        x-padding-placement: queryInHeader
+        x-padding-method: tokenish
         reality-opts:
           public-key: "${PUBLIC_KEY}"
           short-id: "${SHORT_ID}"
@@ -742,6 +760,7 @@ proxies:
           max-concurrency: "16-32"
           c-max-reuse-times: "0"
           h-max-reusable-secs: "1800-3000"
+          h-keep-alive-period: 0
 
   - name: "xhttp+TLS 双向 CDN"
     type: vless
@@ -761,10 +780,17 @@ proxies:
       host: "${CDN_DOMAIN}"
       path: "${XHTTP_PATH}"
       mode: auto
+      x-padding-obfs-mode: true
+      x-padding-key: x_padding
+      x-padding-header: Referer
+      x-padding-placement: queryInHeader
+      x-padding-method: tokenish
+      sc-min-posts-interval-ms: 30
       reuse-settings:
         max-concurrency: "16-32"
         c-max-reuse-times: "0"
         h-max-reusable-secs: "1800-3000"
+        h-keep-alive-period: 0
 
   - name: "上行 xhttp+Reality | 下行 xhttp+TLS+CDN"
     type: vless
@@ -787,10 +813,16 @@ proxies:
       host: "${CDN_DOMAIN}"
       path: "${XHTTP_PATH}"
       mode: auto
+      x-padding-obfs-mode: true
+      x-padding-key: x_padding
+      x-padding-header: Referer
+      x-padding-placement: queryInHeader
+      x-padding-method: tokenish
       reuse-settings:
         max-concurrency: "16-32"
         c-max-reuse-times: "0"
         h-max-reusable-secs: "1800-3000"
+        h-keep-alive-period: 0
       download-settings:
         host: "${CDN_DOMAIN}"
         path: "${XHTTP_PATH}"
@@ -801,11 +833,17 @@ proxies:
           - h2
         servername: "${CDN_DOMAIN}"
         client-fingerprint: chrome
+        x-padding-obfs-mode: true
+        x-padding-key: x_padding
+        x-padding-header: Referer
+        x-padding-placement: queryInHeader
+        x-padding-method: tokenish
         reality-opts: { public-key: "" }
         reuse-settings:
           max-concurrency: "16-32"
           c-max-reuse-times: "0"
           h-max-reusable-secs: "1800-3000"
+          h-keep-alive-period: 0
 
 proxy-groups:
   - name: "节点选择"
