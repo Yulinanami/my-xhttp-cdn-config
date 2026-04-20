@@ -184,6 +184,10 @@ PUBLIC_KEY=$(echo "$KEY_OUTPUT" | grep -i "public" | awk -F': ' '{print $2}' | t
 [[ -z "$PUBLIC_KEY" ]] && error "未能提取 Public Key，xray x25519 输出: $KEY_OUTPUT"
 SHORT_ID=$(echo "$UUID1" | tr -d '-' | cut -c1-8)
 XHTTP_PATH="/$(echo "$UUID2" | tr -d '-' | cut -c1-8)"
+XHTTP_PADDING_HEADER="X-Cache"
+XHTTP_PADDING_KEY="_dc"
+XHTTP_PADDING_PLACEMENT="queryInHeader"
+XHTTP_PADDING_METHOD="tokenish"
 
 info "生成 VLESS Encryption 密钥..."
 VLESSENC_OUTPUT=$(xray vlessenc 2>&1)
@@ -543,7 +547,12 @@ cat > /usr/local/etc/xray/config.json << XRAYEOF
                 "xhttpSettings": {
                     "host": "",
                     "path": "${XHTTP_PATH}",
-                    "mode": "auto"
+                    "mode": "auto",
+                    "xPaddingObfsMode": true,
+                    "xPaddingKey": "${XHTTP_PADDING_KEY}",
+                    "xPaddingHeader": "${XHTTP_PADDING_HEADER}",
+                    "xPaddingPlacement": "${XHTTP_PADDING_PLACEMENT}",
+                    "xPaddingMethod": "${XHTTP_PADDING_METHOD}"
                 }
             },
             "sniffing": {
@@ -598,15 +607,19 @@ echo ""
 info "[6/6] 生成客户端配置"
 XHTTP_PATH_ENC=$(printf '%s' "$XHTTP_PATH" | sed 's|/|%2F|g')
 
-EXTRA_3="%7B%22downloadSettings%22%3A%7B%22address%22%3A%22${VPS_IP_ENC}%22%2C%22port%22%3A443%2C%22network%22%3A%22xhttp%22%2C%22security%22%3A%22reality%22%2C%22realitySettings%22%3A%7B%22show%22%3Afalse%2C%22serverName%22%3A%22${REALITY_DOMAIN}%22%2C%22fingerprint%22%3A%22chrome%22%2C%22shortId%22%3A%22${SHORT_ID}%22%2C%22publicKey%22%3A%22${PUBLIC_KEY}%22%7D%2C%22xhttpSettings%22%3A%7B%22host%22%3A%22%22%2C%22path%22%3A%22${XHTTP_PATH_ENC}%22%2C%22mode%22%3A%22auto%22%7D%7D%7D"
+EXTRA_2="%7B%22xPaddingObfsMode%22%3Atrue%2C%22xPaddingMethod%22%3A%22${XHTTP_PADDING_METHOD}%22%2C%22xPaddingPlacement%22%3A%22${XHTTP_PADDING_PLACEMENT}%22%2C%22xPaddingHeader%22%3A%22${XHTTP_PADDING_HEADER}%22%2C%22xPaddingKey%22%3A%22${XHTTP_PADDING_KEY}%22%2C%22xmux%22%3A%7B%22maxConcurrency%22%3A%2216-32%22%2C%22cMaxReuseTimes%22%3A0%2C%22hMaxReusableSecs%22%3A%221800-3000%22%2C%22hKeepAlivePeriod%22%3A0%7D%7D"
 
-EXTRA_5="%7B%22downloadSettings%22%3A%7B%22address%22%3A%22${CDN_DOMAIN}%22%2C%22port%22%3A443%2C%22network%22%3A%22xhttp%22%2C%22security%22%3A%22tls%22%2C%22tlsSettings%22%3A%7B%22serverName%22%3A%22${CDN_DOMAIN}%22%2C%22allowInsecure%22%3Afalse%2C%22alpn%22%3A%5B%22h2%22%5D%2C%22fingerprint%22%3A%22chrome%22%7D%2C%22xhttpSettings%22%3A%7B%22host%22%3A%22${CDN_DOMAIN}%22%2C%22path%22%3A%22${XHTTP_PATH_ENC}%22%2C%22mode%22%3A%22auto%22%7D%7D%7D"
+EXTRA_3="%7B%22xPaddingObfsMode%22%3Atrue%2C%22xPaddingMethod%22%3A%22${XHTTP_PADDING_METHOD}%22%2C%22xPaddingPlacement%22%3A%22${XHTTP_PADDING_PLACEMENT}%22%2C%22xPaddingHeader%22%3A%22${XHTTP_PADDING_HEADER}%22%2C%22xPaddingKey%22%3A%22${XHTTP_PADDING_KEY}%22%2C%22scMinPostsIntervalMs%22%3A30%2C%22xmux%22%3A%7B%22maxConcurrency%22%3A%2216-32%22%2C%22cMaxReuseTimes%22%3A0%2C%22hMaxReusableSecs%22%3A%221800-3000%22%2C%22hKeepAlivePeriod%22%3A0%7D%2C%22downloadSettings%22%3A%7B%22address%22%3A%22${VPS_IP_ENC}%22%2C%22port%22%3A443%2C%22network%22%3A%22xhttp%22%2C%22security%22%3A%22reality%22%2C%22realitySettings%22%3A%7B%22show%22%3Afalse%2C%22serverName%22%3A%22${REALITY_DOMAIN}%22%2C%22fingerprint%22%3A%22chrome%22%2C%22shortId%22%3A%22${SHORT_ID}%22%2C%22publicKey%22%3A%22${PUBLIC_KEY}%22%7D%2C%22xhttpSettings%22%3A%7B%22host%22%3A%22%22%2C%22path%22%3A%22${XHTTP_PATH_ENC}%22%2C%22mode%22%3A%22auto%22%2C%22extra%22%3A%7B%22xPaddingObfsMode%22%3Atrue%2C%22xPaddingMethod%22%3A%22${XHTTP_PADDING_METHOD}%22%2C%22xPaddingPlacement%22%3A%22${XHTTP_PADDING_PLACEMENT}%22%2C%22xPaddingHeader%22%3A%22${XHTTP_PADDING_HEADER}%22%2C%22xPaddingKey%22%3A%22${XHTTP_PADDING_KEY}%22%2C%22xmux%22%3A%7B%22maxConcurrency%22%3A%2216-32%22%2C%22cMaxReuseTimes%22%3A0%2C%22hMaxReusableSecs%22%3A%221800-3000%22%2C%22hKeepAlivePeriod%22%3A0%7D%7D%7D%7D%7D"
+
+EXTRA_4="%7B%22xPaddingObfsMode%22%3Atrue%2C%22xPaddingMethod%22%3A%22${XHTTP_PADDING_METHOD}%22%2C%22xPaddingPlacement%22%3A%22${XHTTP_PADDING_PLACEMENT}%22%2C%22xPaddingHeader%22%3A%22${XHTTP_PADDING_HEADER}%22%2C%22xPaddingKey%22%3A%22${XHTTP_PADDING_KEY}%22%2C%22scMinPostsIntervalMs%22%3A30%2C%22xmux%22%3A%7B%22maxConcurrency%22%3A%2216-32%22%2C%22cMaxReuseTimes%22%3A0%2C%22hMaxReusableSecs%22%3A%221800-3000%22%2C%22hKeepAlivePeriod%22%3A0%7D%7D"
+
+EXTRA_5="%7B%22xPaddingObfsMode%22%3Atrue%2C%22xPaddingMethod%22%3A%22${XHTTP_PADDING_METHOD}%22%2C%22xPaddingPlacement%22%3A%22${XHTTP_PADDING_PLACEMENT}%22%2C%22xPaddingHeader%22%3A%22${XHTTP_PADDING_HEADER}%22%2C%22xPaddingKey%22%3A%22${XHTTP_PADDING_KEY}%22%2C%22xmux%22%3A%7B%22maxConcurrency%22%3A%2216-32%22%2C%22cMaxReuseTimes%22%3A0%2C%22hMaxReusableSecs%22%3A%221800-3000%22%2C%22hKeepAlivePeriod%22%3A0%7D%2C%22downloadSettings%22%3A%7B%22address%22%3A%22${CDN_DOMAIN}%22%2C%22port%22%3A443%2C%22network%22%3A%22xhttp%22%2C%22security%22%3A%22tls%22%2C%22tlsSettings%22%3A%7B%22serverName%22%3A%22${CDN_DOMAIN}%22%2C%22allowInsecure%22%3Afalse%2C%22alpn%22%3A%5B%22h2%22%5D%2C%22fingerprint%22%3A%22chrome%22%7D%2C%22xhttpSettings%22%3A%7B%22host%22%3A%22${CDN_DOMAIN}%22%2C%22path%22%3A%22${XHTTP_PATH_ENC}%22%2C%22mode%22%3A%22auto%22%2C%22extra%22%3A%7B%22xPaddingObfsMode%22%3Atrue%2C%22xPaddingMethod%22%3A%22${XHTTP_PADDING_METHOD}%22%2C%22xPaddingPlacement%22%3A%22${XHTTP_PADDING_PLACEMENT}%22%2C%22xPaddingHeader%22%3A%22${XHTTP_PADDING_HEADER}%22%2C%22xPaddingKey%22%3A%22${XHTTP_PADDING_KEY}%22%2C%22xmux%22%3A%7B%22maxConcurrency%22%3A%2216-32%22%2C%22cMaxReuseTimes%22%3A0%2C%22hMaxReusableSecs%22%3A%221800-3000%22%2C%22hKeepAlivePeriod%22%3A0%7D%7D%7D%7D%7D"
 
 cat > "$USER_HOME/client-config.txt" << CLIENTEOF
 vless://${UUID1}@${VPS_IP_URI}:443?encryption=none&flow=xtls-rprx-vision&security=reality&sni=${REALITY_DOMAIN}&fp=chrome&pbk=${PUBLIC_KEY}&sid=${SHORT_ID}&type=tcp&headerType=none#reality%2Bvision%20%E7%9B%B4%E8%BF%9E
-vless://${UUID2}@${VPS_IP_URI}:443?encryption=${VLESSENC_ENCRYPTION}&security=reality&sni=${REALITY_DOMAIN}&fp=chrome&pbk=${PUBLIC_KEY}&sid=${SHORT_ID}&type=xhttp&path=${XHTTP_PATH}&mode=auto#xhttp%2BReality%20%E4%B8%8A%E4%B8%8B%E8%A1%8C%E4%B8%8D%E5%88%86%E7%A6%BB%20%EF%BC%88%E4%B8%8A%E8%A1%8C%E4%B8%BA%20stream-one%20%E6%A8%A1%E5%BC%8F%EF%BC%89
+vless://${UUID2}@${VPS_IP_URI}:443?encryption=${VLESSENC_ENCRYPTION}&security=reality&sni=${REALITY_DOMAIN}&fp=chrome&pbk=${PUBLIC_KEY}&sid=${SHORT_ID}&type=xhttp&path=${XHTTP_PATH}&mode=auto&extra=${EXTRA_2}#xhttp%2BReality%20%E4%B8%8A%E4%B8%8B%E8%A1%8C%E4%B8%8D%E5%88%86%E7%A6%BB%20%EF%BC%88%E4%B8%8A%E8%A1%8C%E4%B8%BA%20stream-one%20%E6%A8%A1%E5%BC%8F%EF%BC%89
 vless://${UUID2}@${CDN_DOMAIN}:443?encryption=${VLESSENC_ENCRYPTION}&security=tls&sni=${CDN_DOMAIN}&fp=chrome&alpn=h2&insecure=0&allowInsecure=0&type=xhttp&host=${CDN_DOMAIN}&path=${XHTTP_PATH}&mode=auto&extra=${EXTRA_3}#%E4%B8%8A%E8%A1%8C%20xhttp%2BTLS%2BCDN%20%7C%20%E4%B8%8B%E8%A1%8C%20xhttp%2BReality
-vless://${UUID2}@${CDN_DOMAIN}:443?encryption=${VLESSENC_ENCRYPTION}&security=tls&sni=${CDN_DOMAIN}&fp=chrome&alpn=h2&insecure=0&allowInsecure=0&type=xhttp&host=${CDN_DOMAIN}&path=${XHTTP_PATH}&mode=auto#xhttp%2Btls%20%E5%8F%8C%E5%90%91CDN
+vless://${UUID2}@${CDN_DOMAIN}:443?encryption=${VLESSENC_ENCRYPTION}&security=tls&sni=${CDN_DOMAIN}&fp=chrome&alpn=h2&insecure=0&allowInsecure=0&type=xhttp&host=${CDN_DOMAIN}&path=${XHTTP_PATH}&mode=auto&extra=${EXTRA_4}#xhttp%2Btls%20%E5%8F%8C%E5%90%91CDN
 vless://${UUID2}@${VPS_IP_URI}:443?encryption=${VLESSENC_ENCRYPTION}&security=reality&sni=${REALITY_DOMAIN}&fp=chrome&pbk=${PUBLIC_KEY}&sid=${SHORT_ID}&type=xhttp&path=${XHTTP_PATH}&mode=auto&extra=${EXTRA_5}#%E4%B8%8A%E8%A1%8C%20xhttp%2BReality%20%7C%20%E4%B8%8B%E8%A1%8C%20xhttp%2BTLS%2BCDN
 CLIENTEOF
 
@@ -700,10 +713,10 @@ proxies:
       path: "${XHTTP_PATH}"
       mode: auto
       x-padding-obfs-mode: true
-      x-padding-key: x_padding
-      x-padding-header: Referer
-      x-padding-placement: queryInHeader
-      x-padding-method: tokenish
+      x-padding-key: "${XHTTP_PADDING_KEY}"
+      x-padding-header: "${XHTTP_PADDING_HEADER}"
+      x-padding-placement: "${XHTTP_PADDING_PLACEMENT}"
+      x-padding-method: "${XHTTP_PADDING_METHOD}"
       reuse-settings:
         max-concurrency: "16-32"
         c-max-reuse-times: "0"
@@ -729,10 +742,10 @@ proxies:
       path: "${XHTTP_PATH}"
       mode: auto
       x-padding-obfs-mode: true
-      x-padding-key: x_padding
-      x-padding-header: Referer
-      x-padding-placement: queryInHeader
-      x-padding-method: tokenish
+      x-padding-key: "${XHTTP_PADDING_KEY}"
+      x-padding-header: "${XHTTP_PADDING_HEADER}"
+      x-padding-placement: "${XHTTP_PADDING_PLACEMENT}"
+      x-padding-method: "${XHTTP_PADDING_METHOD}"
       sc-min-posts-interval-ms: 30
       reuse-settings:
         max-concurrency: "16-32"
@@ -749,10 +762,10 @@ proxies:
         servername: "${REALITY_DOMAIN}"
         client-fingerprint: chrome
         x-padding-obfs-mode: true
-        x-padding-key: x_padding
-        x-padding-header: Referer
-        x-padding-placement: queryInHeader
-        x-padding-method: tokenish
+        x-padding-key: "${XHTTP_PADDING_KEY}"
+        x-padding-header: "${XHTTP_PADDING_HEADER}"
+        x-padding-placement: "${XHTTP_PADDING_PLACEMENT}"
+        x-padding-method: "${XHTTP_PADDING_METHOD}"
         reality-opts:
           public-key: "${PUBLIC_KEY}"
           short-id: "${SHORT_ID}"
@@ -781,10 +794,10 @@ proxies:
       path: "${XHTTP_PATH}"
       mode: auto
       x-padding-obfs-mode: true
-      x-padding-key: x_padding
-      x-padding-header: Referer
-      x-padding-placement: queryInHeader
-      x-padding-method: tokenish
+      x-padding-key: "${XHTTP_PADDING_KEY}"
+      x-padding-header: "${XHTTP_PADDING_HEADER}"
+      x-padding-placement: "${XHTTP_PADDING_PLACEMENT}"
+      x-padding-method: "${XHTTP_PADDING_METHOD}"
       sc-min-posts-interval-ms: 30
       reuse-settings:
         max-concurrency: "16-32"
@@ -814,10 +827,10 @@ proxies:
       path: "${XHTTP_PATH}"
       mode: auto
       x-padding-obfs-mode: true
-      x-padding-key: x_padding
-      x-padding-header: Referer
-      x-padding-placement: queryInHeader
-      x-padding-method: tokenish
+      x-padding-key: "${XHTTP_PADDING_KEY}"
+      x-padding-header: "${XHTTP_PADDING_HEADER}"
+      x-padding-placement: "${XHTTP_PADDING_PLACEMENT}"
+      x-padding-method: "${XHTTP_PADDING_METHOD}"
       reuse-settings:
         max-concurrency: "16-32"
         c-max-reuse-times: "0"
@@ -834,10 +847,10 @@ proxies:
         servername: "${CDN_DOMAIN}"
         client-fingerprint: chrome
         x-padding-obfs-mode: true
-        x-padding-key: x_padding
-        x-padding-header: Referer
-        x-padding-placement: queryInHeader
-        x-padding-method: tokenish
+        x-padding-key: "${XHTTP_PADDING_KEY}"
+        x-padding-header: "${XHTTP_PADDING_HEADER}"
+        x-padding-placement: "${XHTTP_PADDING_PLACEMENT}"
+        x-padding-method: "${XHTTP_PADDING_METHOD}"
         reality-opts: { public-key: "" }
         reuse-settings:
           max-concurrency: "16-32"
