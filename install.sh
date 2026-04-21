@@ -184,8 +184,8 @@ PUBLIC_KEY=$(echo "$KEY_OUTPUT" | grep -i "public" | awk -F': ' '{print $2}' | t
 [[ -z "$PUBLIC_KEY" ]] && error "未能提取 Public Key，xray x25519 输出: $KEY_OUTPUT"
 SHORT_ID=$(echo "$UUID1" | tr -d '-' | cut -c1-8)
 XHTTP_PATH="/$(echo "$UUID2" | tr -d '-' | cut -c1-8)"
-XHTTP_PADDING_HEADER="X-Cache"
-XHTTP_PADDING_KEY="_dc"
+XHTTP_PADDING_HEADER="Referer"
+XHTTP_PADDING_KEY="x_padding"
 XHTTP_PADDING_PLACEMENT="queryInHeader"
 XHTTP_PADDING_METHOD="tokenish"
 

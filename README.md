@@ -4,7 +4,7 @@
 支持小火箭、Xray和Mihomo客户端，支持IPv4和IPv6。
 > **提示**：推荐使用全新未搭建过类似服务的机器，这样可以避免很多隐形冲突。
 > **注意**：教程使用 VLESS Encryption，客户端（V2rayN、Mihomo客户端）也需要更新到支持 vlessenc / xhttp 的新版本。
-> **Mihomo 版本要求**：客户端Mihomo内核版本≥`1.19.24`。
+> **Mihomo 版本要求**：客户端Mihomo内核版本≥`1.19.23`。
 
 ## 模式
 
@@ -39,6 +39,25 @@ bash <(curl -fsSL https://raw.githubusercontent.com/Yulinanami/my-xhttp-cdn-conf
 ```bash
 wget -O install.sh https://raw.githubusercontent.com/Yulinanami/my-xhttp-cdn-config/refs/heads/master/install.sh && bash install.sh
 ```
+
+---
+
+## 带 xpadding 的配置版本
+
+> **注意**：需要Mihomo内核版本≥1.19.24。
+
+```bash
+bash <(curl -fsSL https://raw.githubusercontent.com/Yulinanami/my-xhttp-cdn-config/refs/heads/xpadding/install.sh)
+```
+
+或者：
+
+```bash
+wget -O install.sh https://raw.githubusercontent.com/Yulinanami/my-xhttp-cdn-config/refs/heads/xpadding/install.sh && bash install.sh
+```
+
+---
+
 > **提示**：脚本可以重新执行即可更新域名、回落网站等参数。
 
 脚本会提示输入两个域名，其余参数（UUID、密钥、shortId、路径）全部自动生成。完成后会同时生成：
