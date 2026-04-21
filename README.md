@@ -1,6 +1,6 @@
 # XHTTP + CDN 上下行分离配置指南
 
-这个仓库用于整理一套基于 Xray-core 的 XHTTP + CDN 搭建方案，覆盖环境准备、服务端配置和客户端模板三部分内容。
+这个仓库用于整理一套443端口上基于 Xray-core 的 XHTTP + CDN 搭建方案，覆盖环境准备、服务端配置和客户端模板三部分内容。
 支持小火箭、Xray和Mihomo客户端，支持IPv4和IPv6。
 > **提示**：推荐使用全新未搭建过类似服务的机器，这样可以避免很多隐形冲突。
 > **注意**：教程使用 VLESS Encryption，客户端（V2rayN、Mihomo客户端）也需要更新到支持 vlessenc / xhttp 的版本。
@@ -19,7 +19,7 @@
 
 - VLESS Encryption：启用 VLESS Encryption，防止 CDN 中间人解密流量内容
 - 对 XHTTP 入站启用 vlessenc（因为只有它过 CDN），Vision 直连不需要
-- 把来自防火墙的主动探测默认转发到斯坦福和哈佛的官网来进行伪装（建议根据自己VPS的所在地区来修改，改成你VPS所在地的大学官网伪装能力会更好）
+- 默认转发自主动探测请求到斯坦福和哈佛的官网（建议根据自己VPS的所在地区来修改，改成你VPS所在地的大学官网伪装能力会更好）
 - 配置 `xpadding` 以绕过 CDN 的潜在检测
 
 ---
@@ -48,7 +48,7 @@ wget -O install.sh https://raw.githubusercontent.com/Yulinanami/my-xhttp-cdn-con
 
 ---
 
-## 带 xpadding 的配置版本（测试）
+## 带 xpadding 的配置版本
 
 > **注意**：需要 Xray 内核版本≥`26.2.6`，Mihomo 内核版本≥`1.19.24`。
 

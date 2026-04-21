@@ -99,11 +99,11 @@ read -rp "请输入 CDN 域名回落网站 [默认 https://www.harvard.edu]: " C
 CDN_FALLBACK_URL=${CDN_FALLBACK_URL:-https://www.harvard.edu}
 
 echo ""
-echo -e "${YELLOW}[+] xpadding 自定义伪装（直接回车使用默认值）${NC}"
-read -rp "请输入 xpadding Header 名 [默认 X-Cache]: " XHTTP_PADDING_HEADER
-XHTTP_PADDING_HEADER=${XHTTP_PADDING_HEADER:-X-Cache}
-read -rp "请输入 xpadding 参数名 [默认 _dc]: " XHTTP_PADDING_KEY
-XHTTP_PADDING_KEY=${XHTTP_PADDING_KEY:-_dc}
+echo -e "${YELLOW}[+] xpadding 自定义填充${NC}"
+read -rp "请输入 xpadding Header 名 [默认 Referer]: " XHTTP_PADDING_HEADER
+XHTTP_PADDING_HEADER=${XHTTP_PADDING_HEADER:-Referer}
+read -rp "请输入 xpadding 参数名 [默认 x_padding]: " XHTTP_PADDING_KEY
+XHTTP_PADDING_KEY=${XHTTP_PADDING_KEY:-x_padding}
 
 normalize_proxy_origin() {
   local url="$1"
