@@ -39,6 +39,25 @@ bash <(curl -fsSL https://raw.githubusercontent.com/Yulinanami/my-xhttp-cdn-conf
 ```bash
 wget -O install.sh https://raw.githubusercontent.com/Yulinanami/my-xhttp-cdn-config/refs/heads/master/install.sh && bash install.sh
 ```
+
+---
+
+## 带 xpadding 的配置版本
+
+> **注意**：需要Mihomo内核版本≥1.19.24。
+
+```bash
+bash <(curl -fsSL https://raw.githubusercontent.com/Yulinanami/my-xhttp-cdn-config/refs/heads/xpadding/install.sh)
+```
+
+或者：
+
+```bash
+wget -O install.sh https://raw.githubusercontent.com/Yulinanami/my-xhttp-cdn-config/refs/heads/xpadding/install.sh && bash install.sh
+```
+
+---
+
 > **提示**：脚本可以重新执行即可更新域名、回落网站等参数。
 
 脚本会提示输入两个域名，其余参数（UUID、密钥、shortId、路径）全部自动生成。完成后会同时生成：
