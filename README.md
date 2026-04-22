@@ -48,7 +48,7 @@ wget -O install.sh https://raw.githubusercontent.com/Yulinanami/my-xhttp-cdn-con
 
 ---
 
-## 带 xpadding 的配置版本
+## 带 xpadding 和 ECH 的配置版本
 
 > **注意**：需要 Xray 内核版本≥`26.2.6`，Mihomo 内核版本≥`1.19.24`。
 
@@ -165,9 +165,10 @@ wget -O install-xpadding.sh https://raw.githubusercontent.com/Yulinanami/my-xhtt
 
 1. [环境配置.md](./1.环境配置.md)，完成 Cloudflare 设置、Xray 安装、证书申请和 Nginx 安装。
 2. [文件配置.md](./2.文件配置.md)，完成 Nginx 与 Xray 配置，并执行测试与重启命令。
-3. [xpadding配置.md](./3.xpadding配置.md)，如需带 `xpadding` 的版本，按此文档补充 Xray / v2rayN / Mihomo 配置。
-4. [客户端模板.txt](./客户端模板.txt)，复制到 V2rayN，替换 `YOUR_*` 占位符后使用。
-5. [客户端模板-mihomo.yaml](./客户端模板-mihomo.yaml)，Mihomo内核客户端的配置文件，替换 `YOUR_*` 占位符后导入。
+3. [xpadding配置.md](./3.xpadding配置.md)，带 `xpadding` 的版本，按此文档补充 Xray / v2rayN / Mihomo 配置。
+4. [ECH配置.md](./4.ECH配置.md)，给 CDN-TLS 节点启用 ECH，按此文档补充客户端配置。
+5. [客户端模板.txt](./客户端模板.txt)，复制到 V2rayN，替换 `YOUR_*` 占位符后使用。
+6. [客户端模板-mihomo.yaml](./客户端模板-mihomo.yaml)，Mihomo内核客户端的配置文件，替换 `YOUR_*` 占位符后导入。
 
 
 
@@ -175,7 +176,7 @@ wget -O install-xpadding.sh https://raw.githubusercontent.com/Yulinanami/my-xhtt
 
 ## 流程图（去程 + 回程）
 
-客户端与服务器连接流程图请看：[4.流程图.md](./4.流程图.md)
+客户端与服务器连接流程图请看：[5.流程图.md](./5.流程图.md)
 
 ---
 
@@ -206,3 +207,12 @@ wget -O install-xpadding.sh https://raw.githubusercontent.com/Yulinanami/my-xhtt
 - Mihomo v1.19.24 Release：<https://github.com/MetaCubeX/mihomo/releases/tag/v1.19.24>
 - Mihomo 文档（Transport）：<https://wiki.metacubex.one/config/proxies/transport/>
 - Mihomo 官方配置示例 `docs/config.yaml`：<https://github.com/MetaCubeX/mihomo/blob/Meta/docs/config.yaml>
+
+### ECH
+
+- Cloudflare ECH 文档：<https://developers.cloudflare.com/ssl/edge-certificates/ech/>
+- Xray-core v25.7.26 Release（TLS client/server 支持 ECH）：<https://github.com/XTLS/Xray-core/releases/tag/v25.7.26>
+- Xray-core v26.3.27 Release（ECH 查询行为调整）：<https://github.com/XTLS/Xray-core/releases/tag/v26.3.27>
+- Xray TLSObject 文档（`echConfigList` / `echForceQuery`）：<https://xtls.github.io/config/transport.html>
+- Xray VLESS 分享链接标准（`ech` 对应 `echConfigList`）：<https://github.com/XTLS/Xray-core/discussions/716>
+- Mihomo ECH：<https://github.com/MetaCubeX/mihomo/blob/Meta/adapter/outbound/ech.go>

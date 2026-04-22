@@ -77,6 +77,7 @@ echo "  2. CDN 域名 DNS    → 代理开启 (橙色云朵)"
 echo "  3. SSL/TLS 加密    → 完全(严格)"
 echo "  4. 网络 → gRPC     → 已开启"
 echo "  5. 缓存规则         → 部署完成后根据提示配置 (建议)"
+echo "  6. Edge Certificates → 如需使用 ECH 请先开启"
 echo ""
 
 read -rp "请输入 Reality 域名 (如 reality.example.com): " REALITY_DOMAIN
@@ -104,6 +105,19 @@ read -rp "请输入 xpadding Header 名 [默认 Referer]: " XHTTP_PADDING_HEADER
 XHTTP_PADDING_HEADER=${XHTTP_PADDING_HEADER:-Referer}
 read -rp "请输入 xpadding 参数名 [默认 x_padding]: " XHTTP_PADDING_KEY
 XHTTP_PADDING_KEY=${XHTTP_PADDING_KEY:-x_padding}
+
+echo ""
+echo -e "${YELLOW}[+] CDN ECH（作用于 CDN-TLS）${NC}"
+read -rp "是否启用 CDN ECH [y/N]: " CDN_ECH_INPUT
+case "$CDN_ECH_INPUT" in
+  [Yy]|[Yy][Ee][Ss]) CDN_ECH_ENABLED=true ;;
+  *) CDN_ECH_ENABLED=false ;;
+esac
+if [[ "$CDN_ECH_ENABLED" == true ]]; then
+  CDN_ECH_QUERY="cloudflare-ech.com+https://223.5.5.5/dns-query"
+else
+  CDN_ECH_QUERY=""
+fi
 
 normalize_proxy_origin() {
   local url="$1"
@@ -148,6 +162,11 @@ info "Reality 回落网站: $REALITY_FALLBACK_ORIGIN"
 info "CDN 回落网站:     $CDN_FALLBACK_ORIGIN"
 info "xpadding Header:   $XHTTP_PADDING_HEADER"
 info "xpadding Key:      $XHTTP_PADDING_KEY"
+if [[ "$CDN_ECH_ENABLED" == true ]]; then
+  info "CDN ECH:          已开启"
+else
+  info "CDN ECH:          未开启"
+fi
 echo ""
 
 info "[1/6] 安装基础环境"
@@ -195,6 +214,14 @@ SHORT_ID=$(echo "$UUID1" | tr -d '-' | cut -c1-8)
 XHTTP_PATH="/$(echo "$UUID2" | tr -d '-' | cut -c1-8)"
 XHTTP_PADDING_PLACEMENT="queryInHeader"
 XHTTP_PADDING_METHOD="tokenish"
+if [[ "$CDN_ECH_ENABLED" == true ]]; then
+  CDN_ECH_QUERY_ENC=$(echo "$CDN_ECH_QUERY" | sed -e 's/%/%25/g' -e 's/+/%2B/g' -e 's/:/%3A/g' -e 's/\//%2F/g')
+  CDN_ECH_URI_PARAM="&ech=${CDN_ECH_QUERY_ENC}"
+  CDN_ECH_TLS_SETTINGS_EXTRA="%2C%22echConfigList%22%3A%22${CDN_ECH_QUERY_ENC}%22"
+else
+  CDN_ECH_URI_PARAM=""
+  CDN_ECH_TLS_SETTINGS_EXTRA=""
+fi
 
 info "生成 VLESS Encryption 密钥..."
 VLESSENC_OUTPUT=$(xray vlessenc 2>&1)
@@ -612,7 +639,7 @@ info "Nginx 运行中"
 echo ""
 
 info "[6/6] 生成客户端配置"
-XHTTP_PATH_ENC=$(printf '%s' "$XHTTP_PATH" | sed 's|/|%2F|g')
+XHTTP_PATH_ENC=$(echo "$XHTTP_PATH" | sed 's|/|%2F|g')
 
 EXTRA_2="%7B%22xPaddingObfsMode%22%3Atrue%2C%22xPaddingMethod%22%3A%22${XHTTP_PADDING_METHOD}%22%2C%22xPaddingPlacement%22%3A%22${XHTTP_PADDING_PLACEMENT}%22%2C%22xPaddingHeader%22%3A%22${XHTTP_PADDING_HEADER}%22%2C%22xPaddingKey%22%3A%22${XHTTP_PADDING_KEY}%22%2C%22xmux%22%3A%7B%22maxConcurrency%22%3A%2216-32%22%2C%22cMaxReuseTimes%22%3A0%2C%22hMaxReusableSecs%22%3A%221800-3000%22%2C%22hKeepAlivePeriod%22%3A0%7D%7D"
 
@@ -620,13 +647,13 @@ EXTRA_3="%7B%22xPaddingObfsMode%22%3Atrue%2C%22xPaddingMethod%22%3A%22${XHTTP_PA
 
 EXTRA_4="%7B%22xPaddingObfsMode%22%3Atrue%2C%22xPaddingMethod%22%3A%22${XHTTP_PADDING_METHOD}%22%2C%22xPaddingPlacement%22%3A%22${XHTTP_PADDING_PLACEMENT}%22%2C%22xPaddingHeader%22%3A%22${XHTTP_PADDING_HEADER}%22%2C%22xPaddingKey%22%3A%22${XHTTP_PADDING_KEY}%22%2C%22scMinPostsIntervalMs%22%3A30%2C%22xmux%22%3A%7B%22maxConcurrency%22%3A%2216-32%22%2C%22cMaxReuseTimes%22%3A0%2C%22hMaxReusableSecs%22%3A%221800-3000%22%2C%22hKeepAlivePeriod%22%3A0%7D%7D"
 
-EXTRA_5="%7B%22xPaddingObfsMode%22%3Atrue%2C%22xPaddingMethod%22%3A%22${XHTTP_PADDING_METHOD}%22%2C%22xPaddingPlacement%22%3A%22${XHTTP_PADDING_PLACEMENT}%22%2C%22xPaddingHeader%22%3A%22${XHTTP_PADDING_HEADER}%22%2C%22xPaddingKey%22%3A%22${XHTTP_PADDING_KEY}%22%2C%22xmux%22%3A%7B%22maxConcurrency%22%3A%2216-32%22%2C%22cMaxReuseTimes%22%3A0%2C%22hMaxReusableSecs%22%3A%221800-3000%22%2C%22hKeepAlivePeriod%22%3A0%7D%2C%22downloadSettings%22%3A%7B%22address%22%3A%22${CDN_DOMAIN}%22%2C%22port%22%3A443%2C%22network%22%3A%22xhttp%22%2C%22security%22%3A%22tls%22%2C%22tlsSettings%22%3A%7B%22serverName%22%3A%22${CDN_DOMAIN}%22%2C%22allowInsecure%22%3Afalse%2C%22alpn%22%3A%5B%22h2%22%5D%2C%22fingerprint%22%3A%22chrome%22%7D%2C%22xhttpSettings%22%3A%7B%22host%22%3A%22${CDN_DOMAIN}%22%2C%22path%22%3A%22${XHTTP_PATH_ENC}%22%2C%22mode%22%3A%22auto%22%2C%22extra%22%3A%7B%22xPaddingObfsMode%22%3Atrue%2C%22xPaddingMethod%22%3A%22${XHTTP_PADDING_METHOD}%22%2C%22xPaddingPlacement%22%3A%22${XHTTP_PADDING_PLACEMENT}%22%2C%22xPaddingHeader%22%3A%22${XHTTP_PADDING_HEADER}%22%2C%22xPaddingKey%22%3A%22${XHTTP_PADDING_KEY}%22%2C%22xmux%22%3A%7B%22maxConcurrency%22%3A%2216-32%22%2C%22cMaxReuseTimes%22%3A0%2C%22hMaxReusableSecs%22%3A%221800-3000%22%2C%22hKeepAlivePeriod%22%3A0%7D%7D%7D%7D%7D"
+EXTRA_5="%7B%22xPaddingObfsMode%22%3Atrue%2C%22xPaddingMethod%22%3A%22${XHTTP_PADDING_METHOD}%22%2C%22xPaddingPlacement%22%3A%22${XHTTP_PADDING_PLACEMENT}%22%2C%22xPaddingHeader%22%3A%22${XHTTP_PADDING_HEADER}%22%2C%22xPaddingKey%22%3A%22${XHTTP_PADDING_KEY}%22%2C%22xmux%22%3A%7B%22maxConcurrency%22%3A%2216-32%22%2C%22cMaxReuseTimes%22%3A0%2C%22hMaxReusableSecs%22%3A%221800-3000%22%2C%22hKeepAlivePeriod%22%3A0%7D%2C%22downloadSettings%22%3A%7B%22address%22%3A%22${CDN_DOMAIN}%22%2C%22port%22%3A443%2C%22network%22%3A%22xhttp%22%2C%22security%22%3A%22tls%22%2C%22tlsSettings%22%3A%7B%22serverName%22%3A%22${CDN_DOMAIN}%22%2C%22allowInsecure%22%3Afalse%2C%22alpn%22%3A%5B%22h2%22%5D%2C%22fingerprint%22%3A%22chrome%22${CDN_ECH_TLS_SETTINGS_EXTRA}%7D%2C%22xhttpSettings%22%3A%7B%22host%22%3A%22${CDN_DOMAIN}%22%2C%22path%22%3A%22${XHTTP_PATH_ENC}%22%2C%22mode%22%3A%22auto%22%2C%22extra%22%3A%7B%22xPaddingObfsMode%22%3Atrue%2C%22xPaddingMethod%22%3A%22${XHTTP_PADDING_METHOD}%22%2C%22xPaddingPlacement%22%3A%22${XHTTP_PADDING_PLACEMENT}%22%2C%22xPaddingHeader%22%3A%22${XHTTP_PADDING_HEADER}%22%2C%22xPaddingKey%22%3A%22${XHTTP_PADDING_KEY}%22%2C%22xmux%22%3A%7B%22maxConcurrency%22%3A%2216-32%22%2C%22cMaxReuseTimes%22%3A0%2C%22hMaxReusableSecs%22%3A%221800-3000%22%2C%22hKeepAlivePeriod%22%3A0%7D%7D%7D%7D%7D"
 
 cat > "$USER_HOME/client-config.txt" << CLIENTEOF
 vless://${UUID1}@${VPS_IP_URI}:443?encryption=none&flow=xtls-rprx-vision&security=reality&sni=${REALITY_DOMAIN}&fp=chrome&pbk=${PUBLIC_KEY}&sid=${SHORT_ID}&type=tcp&headerType=none#reality%2Bvision%20%E7%9B%B4%E8%BF%9E
 vless://${UUID2}@${VPS_IP_URI}:443?encryption=${VLESSENC_ENCRYPTION}&security=reality&sni=${REALITY_DOMAIN}&fp=chrome&pbk=${PUBLIC_KEY}&sid=${SHORT_ID}&type=xhttp&path=${XHTTP_PATH}&mode=auto&extra=${EXTRA_2}#xhttp%2BReality%20%E4%B8%8A%E4%B8%8B%E8%A1%8C%E4%B8%8D%E5%88%86%E7%A6%BB%20%EF%BC%88%E4%B8%8A%E8%A1%8C%E4%B8%BA%20stream-one%20%E6%A8%A1%E5%BC%8F%EF%BC%89
-vless://${UUID2}@${CDN_DOMAIN}:443?encryption=${VLESSENC_ENCRYPTION}&security=tls&sni=${CDN_DOMAIN}&fp=chrome&alpn=h2&insecure=0&allowInsecure=0&type=xhttp&host=${CDN_DOMAIN}&path=${XHTTP_PATH}&mode=auto&extra=${EXTRA_3}#%E4%B8%8A%E8%A1%8C%20xhttp%2BTLS%2BCDN%20%7C%20%E4%B8%8B%E8%A1%8C%20xhttp%2BReality
-vless://${UUID2}@${CDN_DOMAIN}:443?encryption=${VLESSENC_ENCRYPTION}&security=tls&sni=${CDN_DOMAIN}&fp=chrome&alpn=h2&insecure=0&allowInsecure=0&type=xhttp&host=${CDN_DOMAIN}&path=${XHTTP_PATH}&mode=auto&extra=${EXTRA_4}#xhttp%2Btls%20%E5%8F%8C%E5%90%91CDN
+vless://${UUID2}@${CDN_DOMAIN}:443?encryption=${VLESSENC_ENCRYPTION}&security=tls&sni=${CDN_DOMAIN}&fp=chrome&alpn=h2&insecure=0&allowInsecure=0${CDN_ECH_URI_PARAM}&type=xhttp&host=${CDN_DOMAIN}&path=${XHTTP_PATH}&mode=auto&extra=${EXTRA_3}#%E4%B8%8A%E8%A1%8C%20xhttp%2BTLS%2BCDN%20%7C%20%E4%B8%8B%E8%A1%8C%20xhttp%2BReality
+vless://${UUID2}@${CDN_DOMAIN}:443?encryption=${VLESSENC_ENCRYPTION}&security=tls&sni=${CDN_DOMAIN}&fp=chrome&alpn=h2&insecure=0&allowInsecure=0${CDN_ECH_URI_PARAM}&type=xhttp&host=${CDN_DOMAIN}&path=${XHTTP_PATH}&mode=auto&extra=${EXTRA_4}#xhttp%2Btls%20%E5%8F%8C%E5%90%91CDN
 vless://${UUID2}@${VPS_IP_URI}:443?encryption=${VLESSENC_ENCRYPTION}&security=reality&sni=${REALITY_DOMAIN}&fp=chrome&pbk=${PUBLIC_KEY}&sid=${SHORT_ID}&type=xhttp&path=${XHTTP_PATH}&mode=auto&extra=${EXTRA_5}#%E4%B8%8A%E8%A1%8C%20xhttp%2BReality%20%7C%20%E4%B8%8B%E8%A1%8C%20xhttp%2BTLS%2BCDN
 CLIENTEOF
 
@@ -744,6 +771,9 @@ proxies:
       - h2
     servername: "${CDN_DOMAIN}"
     client-fingerprint: chrome
+    ech-opts:
+      enable: ${CDN_ECH_ENABLED}
+      query-server-name: "cloudflare-ech.com"
     xhttp-opts:
       host: "${CDN_DOMAIN}"
       path: "${XHTTP_PATH}"
@@ -796,6 +826,9 @@ proxies:
     servername: "${CDN_DOMAIN}"
     client-fingerprint: chrome
     encryption: "${VLESSENC_ENCRYPTION}"
+    ech-opts:
+      enable: ${CDN_ECH_ENABLED}
+      query-server-name: "cloudflare-ech.com"
     xhttp-opts:
       host: "${CDN_DOMAIN}"
       path: "${XHTTP_PATH}"
@@ -853,6 +886,9 @@ proxies:
           - h2
         servername: "${CDN_DOMAIN}"
         client-fingerprint: chrome
+        ech-opts:
+          enable: ${CDN_ECH_ENABLED}
+          query-server-name: "cloudflare-ech.com"
         x-padding-obfs-mode: true
         x-padding-key: "${XHTTP_PADDING_KEY}"
         x-padding-header: "${XHTTP_PADDING_HEADER}"
@@ -1364,6 +1400,11 @@ echo "Short ID:       $SHORT_ID"
 echo "Path:           $XHTTP_PATH"
 echo "VLESS Enc(客户端): $VLESSENC_ENCRYPTION"
 echo "VLESS Dec(服务端): $VLESSENC_DECRYPTION"
+if [[ "$CDN_ECH_ENABLED" == true ]]; then
+echo "CDN ECH:        已开启 (${CDN_ECH_QUERY})"
+else
+echo "CDN ECH:        未开启"
+fi
 echo ""
 echo -e "\n${YELLOW}[+] 客户端节点，已保存到 $USER_HOME/client-config.txt${NC}"
 cat "$USER_HOME/client-config.txt"
