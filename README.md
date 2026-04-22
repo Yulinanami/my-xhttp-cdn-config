@@ -21,6 +21,7 @@
 - 对 XHTTP 入站启用 vlessenc（因为只有它过 CDN），Vision 直连不需要
 - 默认转发自主动探测请求到斯坦福和哈佛的官网（建议根据自己VPS的所在地区来修改，改成你VPS所在地的大学官网伪装能力会更好）
 - 配置 `xpadding` 以绕过 CDN 的潜在检测
+- 配置 `ECH` 以加密 TLS 握手时的 SNI
 
 ---
 
@@ -31,7 +32,7 @@
 > 2. CDN 域名 DNS → 代理开启（橙色云朵）
 > 3. SSL/TLS 加密 → 完全（严格）
 > 4. 网络 → gRPC → 已开启
-> 5. 缓存规则（建议） → 将 XHTTP 路径设为绕过缓存，具体步骤请参考Github仓库的 [环境配置.md](./1.环境配置.md)。
+> 5. 缓存规则（建议） → 将 XHTTP 路径设为绕过缓存，具体步骤请参考Github仓库的 [环境配置.md](./docs/1.环境配置.md)。
 
 在 VPS (Debian/Ubuntu) 上执行：
 > **注意**：需要 Mihomo 内核版本≥1.19.23。
@@ -163,10 +164,10 @@ wget -O install-xpadding.sh https://raw.githubusercontent.com/Yulinanami/my-xhtt
 
 按下面的顺序阅读和执行：
 
-1. [环境配置.md](./1.环境配置.md)，完成 Cloudflare 设置、Xray 安装、证书申请和 Nginx 安装。
-2. [文件配置.md](./2.文件配置.md)，完成 Nginx 与 Xray 配置，并执行测试与重启命令。
-3. [xpadding配置.md](./3.xpadding配置.md)，带 `xpadding` 的版本，按此文档补充 Xray / v2rayN / Mihomo 配置。
-4. [ECH配置.md](./4.ECH配置.md)，给 CDN-TLS 节点启用 ECH，按此文档补充客户端配置。
+1. [环境配置.md](./docs/1.环境配置.md)，完成 Cloudflare 设置、Xray 安装、证书申请和 Nginx 安装。
+2. [文件配置.md](./docs/2.文件配置.md)，完成 Nginx 与 Xray 配置，并执行测试与重启命令。
+3. [xpadding配置.md](./docs/3.xpadding配置.md)，带 `xpadding` 的版本，按此文档补充 Xray / v2rayN / Mihomo 配置。
+4. [ECH配置.md](./docs/4.ECH配置.md)，给 CDN-TLS 节点启用 ECH，按此文档补充客户端配置。
 5. [客户端模板.txt](./客户端模板.txt)，复制到 V2rayN，替换 `YOUR_*` 占位符后使用。
 6. [客户端模板-mihomo.yaml](./客户端模板-mihomo.yaml)，Mihomo内核客户端的配置文件，替换 `YOUR_*` 占位符后导入。
 
@@ -176,7 +177,7 @@ wget -O install-xpadding.sh https://raw.githubusercontent.com/Yulinanami/my-xhtt
 
 ## 流程图（去程 + 回程）
 
-客户端与服务器连接流程图请看：[5.流程图.md](./5.流程图.md)
+客户端与服务器连接流程图请看：[5.流程图.md](./docs/5.流程图.md)
 
 ---
 
