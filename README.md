@@ -49,9 +49,10 @@ wget -O install.sh https://raw.githubusercontent.com/Yulinanami/my-xhttp-cdn-con
 
 ---
 
-## 带 xpadding 和 ECH 的配置版本
+## 带 xpadding 和 ECH 的配置版本（TUN 链路不稳定）
 
 > **注意**：需要 Xray 内核版本≥`26.2.6`，Mihomo 内核版本≥`1.19.24`。
+> V2rayN v7.19.5+版本 TUN 模式下链路不稳定，需要启用旧版TUN保护选项
 
 ```bash
 bash <(curl -fsSL https://raw.githubusercontent.com/Yulinanami/my-xhttp-cdn-config/refs/heads/master/install-xpadding.sh)
