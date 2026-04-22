@@ -4,6 +4,7 @@
 支持小火箭、Xray和Mihomo客户端，支持IPv4和IPv6。
 > **提示**：推荐使用全新未搭建过类似服务的机器，这样可以避免很多隐形冲突。
 > **注意**：教程使用 VLESS Encryption，客户端（V2rayN、Mihomo客户端）也需要更新到支持 vlessenc / xhttp 的版本。
+> **注意**：V2rayN v7.19.5+版本 TUN 模式下链路不稳定，可能需要启用旧版TUN保护选项。
 
 ## 模式
 
@@ -38,35 +39,55 @@
 > **注意**：需要 Mihomo 内核版本≥1.19.23。
 
 ```bash
-# 先切换到root用户
+# 先切换到 root 用户
 sudo -i
 
-bash <(curl -fsSL https://raw.githubusercontent.com/Yulinanami/my-xhttp-cdn-config/refs/heads/master/install.sh)
+# 下载脚本
+curl -fsSL https://raw.githubusercontent.com/Yulinanami/my-xhttp-cdn-config/refs/heads/master/install.sh -o ~/install.sh
+
+# 执行脚本
+bash ~/install.sh
 ```
 
 Alpine Linux：
 ```sh
-# 先切换到root用户
+# 先切换到 root 用户
 doas -s
 
-apk add --no-cache bash curl && curl -fsSL https://raw.githubusercontent.com/Yulinanami/my-xhttp-cdn-config/refs/heads/master/install.sh | bash
+# 安装bash和curl
+apk add --no-cache bash curl
+
+# 下载脚本
+curl -fsSL https://raw.githubusercontent.com/Yulinanami/my-xhttp-cdn-config/refs/heads/master/install.sh -o ~/install.sh
+
+# 执行脚本
+bash ~/install.sh
 ```
 
 ---
 
-## 带 xpadding 和 ECH 的配置版本（TUN 链路不稳定）
+## 带 xpadding 和 ECH 的配置版本
 
 > **注意**：需要 Xray 内核版本≥`26.2.6`，Mihomo 内核版本≥`1.19.24`。
-> V2rayN v7.19.5+版本 TUN 模式下链路不稳定，需要启用旧版TUN保护选项
 
 ```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/Yulinanami/my-xhttp-cdn-config/refs/heads/master/install-xpadding.sh)
+sudo -i
+
+curl -fsSL https://raw.githubusercontent.com/Yulinanami/my-xhttp-cdn-config/refs/heads/master/install-xpadding.sh -o ~/install-xpadding.sh
+
+bash ~/install-xpadding.sh
 ```
 
 Alpine Linux：
 
 ```sh
-apk add --no-cache bash curl && curl -fsSL https://raw.githubusercontent.com/Yulinanami/my-xhttp-cdn-config/refs/heads/master/install-xpadding.sh | bash
+doas -s
+
+apk add --no-cache bash curl
+
+curl -fsSL https://raw.githubusercontent.com/Yulinanami/my-xhttp-cdn-config/refs/heads/master/install-xpadding.sh -o ~/install-xpadding.sh
+
+bash ~/install-xpadding.sh
 ```
 
 ---
