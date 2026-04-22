@@ -1,6 +1,10 @@
 #!/bin/bash
 set -e
 
+# ==================================================
+# 基础输出与环境检测
+# ==================================================
+
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[0;33m'
@@ -19,6 +23,10 @@ if [[ -f /etc/os-release ]]; then
 else
   error "无法识别当前系统发行版"
 fi
+
+# ==================================================
+# 包管理与服务管理适配
+# ==================================================
 
 case "$OS_ID" in
   debian|ubuntu)
@@ -55,17 +63,119 @@ case "$OS_ID" in
       zypper install -y pcre2-devel zlib-devel libopenssl-devel wget make
     }
     ;;
+  alpine)
+    pkg_update()  { apk update; }
+    pkg_install() { apk add --no-cache "$@"; }
+    install_build_deps() {
+      apk add --no-cache build-base linux-headers pcre2-dev zlib-dev openssl-dev wget make
+    }
+    ;;
   *)
-    error "不支持的发行版: $OS_ID，目前支持 Debian/Ubuntu/CentOS/RHEL/Fedora/openSUSE/SLES"
+    error "不支持的发行版: $OS_ID，目前支持 Debian/Ubuntu/CentOS/RHEL/Fedora/openSUSE/SLES/Alpine"
     ;;
 esac
+
+if [[ "$OS_ID" == "alpine" ]]; then
+  SERVICE_TYPE="openrc"
+  NGINX_STOP_CMD="rc-service nginx stop"
+  NGINX_START_CMD="rc-service nginx start"
+  NGINX_RESTART_CMD="rc-service nginx restart"
+else
+  SERVICE_TYPE="systemd"
+  NGINX_STOP_CMD="systemctl stop nginx"
+  NGINX_START_CMD="systemctl start nginx"
+  NGINX_RESTART_CMD="systemctl restart nginx"
+fi
+
+service_enable() {
+  if [[ "$SERVICE_TYPE" == "openrc" ]]; then
+    rc-update add "$1" default >/dev/null 2>&1 || true
+  else
+    systemctl enable "$1" >/dev/null 2>&1 || true
+  fi
+}
+
+service_restart() {
+  if [[ "$SERVICE_TYPE" == "openrc" ]]; then
+    rc-service "$1" restart || rc-service "$1" start
+  else
+    systemctl restart "$1"
+  fi
+}
+
+service_is_active() {
+  if [[ "$SERVICE_TYPE" == "openrc" ]]; then
+    rc-service "$1" status >/dev/null 2>&1
+  else
+    systemctl is-active --quiet "$1"
+  fi
+}
+
+# ==================================================
+# Xray 安装与服务配置
+# ==================================================
+
+install_xray() {
+  if [[ "$OS_ID" != "alpine" ]]; then
+    bash -c "$(curl -L https://github.com/XTLS/Xray-install/raw/main/install-release.sh)" @ install -u root
+    return
+  fi
+
+  local arch asset tmpdir
+  arch=$(uname -m)
+  case "$arch" in
+    x86_64|amd64) asset="Xray-linux-64.zip" ;;
+    aarch64|arm64) asset="Xray-linux-arm64-v8a.zip" ;;
+    *) error "Alpine 暂不支持当前架构: $arch" ;;
+  esac
+
+  command -v unzip >/dev/null 2>&1 || pkg_install unzip
+  XRAY_VERSION="v26.3.27"
+  tmpdir=$(mktemp -d)
+  curl -fL "https://github.com/XTLS/Xray-core/releases/download/${XRAY_VERSION}/${asset}" -o "${tmpdir}/xray.zip"
+  unzip -q "${tmpdir}/xray.zip" -d "$tmpdir"
+
+  mkdir -p /usr/local/bin /usr/local/etc/xray /usr/local/share/xray /var/log/xray
+  install -m 755 "${tmpdir}/xray" /usr/local/bin/xray
+  install -m 644 "${tmpdir}/geoip.dat" /usr/local/share/xray/geoip.dat
+  install -m 644 "${tmpdir}/geosite.dat" /usr/local/share/xray/geosite.dat
+  rm -rf "$tmpdir"
+
+  cat > /etc/init.d/xray << 'XRAYSERVICEEOF'
+#!/sbin/openrc-run
+
+name="xray"
+description="Xray Service"
+command="/usr/local/bin/xray"
+command_args="run -config /usr/local/etc/xray/config.json"
+command_background="yes"
+pidfile="/run/xray.pid"
+
+export XRAY_LOCATION_ASSET="/usr/local/share/xray"
+
+depend() {
+    need net
+}
+
+start_pre() {
+    checkpath --directory --mode 0755 /run
+    checkpath --directory --mode 0755 /var/log/xray
+}
+XRAYSERVICEEOF
+  chmod +x /etc/init.d/xray
+  service_enable xray
+}
+
+# ==================================================
+# 初始化说明与交互参数
+# ==================================================
 
 info "检测到系统: $PRETTY_NAME"
 
 if [[ -n "$SUDO_USER" && "$SUDO_USER" != "root" ]]; then
   USER_HOME=$(eval echo "~$SUDO_USER")
 else
-  USER_HOME=$(getent passwd 1000 | cut -d: -f6)
+  USER_HOME=$(getent passwd 1000 2>/dev/null | cut -d: -f6 || true)
 fi
 [[ -z "$USER_HOME" || ! -d "$USER_HOME" ]] && USER_HOME="/root"
 
@@ -169,9 +279,18 @@ else
 fi
 echo ""
 
+# ==================================================
+# 基础环境安装
+# ==================================================
+
 info "[1/6] 安装基础环境"
 
 pkg_update
+
+if [[ "$OS_ID" == "alpine" ]]; then
+  pkg_install bash ca-certificates
+  update-ca-certificates >/dev/null 2>&1 || true
+fi
 
 command -v curl    >/dev/null 2>&1 || pkg_install curl
 command -v sudo    >/dev/null 2>&1 || pkg_install sudo
@@ -181,7 +300,12 @@ command -v tar     >/dev/null 2>&1 || pkg_install tar
 command -v openssl >/dev/null 2>&1 || pkg_install openssl
 if ! command -v qrencode >/dev/null 2>&1; then
   info "安装二维码工具 qrencode..."
-  if ! pkg_install qrencode; then
+  if [[ "$OS_ID" == "alpine" ]]; then
+    QR_PACKAGE="libqrencode-tools"
+  else
+    QR_PACKAGE="qrencode"
+  fi
+  if ! pkg_install "$QR_PACKAGE"; then
     warn "qrencode 安装失败，将跳过二维码输出"
   fi
 fi
@@ -191,15 +315,20 @@ if ! command -v crontab >/dev/null 2>&1; then
     debian|ubuntu|opensuse*|sles)
       pkg_install cron
       ;;
-    centos|rhel|almalinux|rocky|ol|amzn|fedora)
+    centos|rhel|almalinux|rocky|ol|amzn|fedora|alpine)
       pkg_install cronie
-      systemctl enable --now crond 2>/dev/null || true
+      if [[ "$SERVICE_TYPE" == "openrc" ]]; then
+        rc-update add crond default >/dev/null 2>&1 || true
+        rc-service crond start >/dev/null 2>&1 || true
+      else
+        systemctl enable --now crond 2>/dev/null || true
+      fi
       ;;
   esac
 fi
 
 info "安装 Xray..."
-bash -c "$(curl -L https://github.com/XTLS/Xray-install/raw/main/install-release.sh)" @ install -u root
+install_xray
 export PATH="/usr/local/bin:$PATH"
 
 info "生成参数..."
@@ -254,6 +383,10 @@ info "VPS IP:         $VPS_IP"
 info "VLESS Enc:      已启用 (防 CDN 中间人)"
 echo ""
 
+# ==================================================
+# 证书申请与复用
+# ==================================================
+
 info "[2/6] 申请 / 复用 SSL 证书"
 
 curl https://get.acme.sh | sh
@@ -280,12 +413,12 @@ have_existing_dual_cert() {
 issue_dual_cert() {
   if [[ "$IP_CHOICE" == "2" ]]; then
     acme.sh --issue -d "$REALITY_DOMAIN" -d "$CDN_DOMAIN" --standalone --listen-v6 --keylength ec-256 \
-      --pre-hook "systemctl stop nginx 2>/dev/null || true" \
-      --post-hook "systemctl start nginx 2>/dev/null || true"
+      --pre-hook "${NGINX_STOP_CMD} 2>/dev/null || true" \
+      --post-hook "${NGINX_START_CMD} 2>/dev/null || true"
   else
     acme.sh --issue -d "$REALITY_DOMAIN" -d "$CDN_DOMAIN" --standalone --keylength ec-256 \
-      --pre-hook "systemctl stop nginx 2>/dev/null || true" \
-      --post-hook "systemctl start nginx 2>/dev/null || true"
+      --pre-hook "${NGINX_STOP_CMD} 2>/dev/null || true" \
+      --post-hook "${NGINX_START_CMD} 2>/dev/null || true"
   fi
 }
 
@@ -311,6 +444,11 @@ else
 fi
 
 echo ""
+
+# ==================================================
+# Nginx 编译安装与服务配置
+# ==================================================
+
 info "[3/6] 编译安装 Nginx"
 info "安装编译依赖..."
 install_build_deps
@@ -336,14 +474,46 @@ info "编译 Nginx ${NGINX_VER} ..."
   --with-stream_ssl_preread_module \
   --with-http_v2_module
 
-make -j"$(nproc)"
+make -j"$(getconf _NPROCESSORS_ONLN 2>/dev/null || echo 1)"
 make install
 
 cd /tmp && rm -rf "nginx-${NGINX_VER}" "nginx-${NGINX_VER}.tar.gz"
 mkdir -p /var/log/nginx
 
-info "创建 systemd 服务..."
-cat > /etc/systemd/system/nginx.service << 'SERVICEEOF'
+info "创建 ${SERVICE_TYPE} 服务..."
+if [[ "$SERVICE_TYPE" == "openrc" ]]; then
+  cat > /etc/init.d/nginx << 'SERVICEEOF'
+#!/sbin/openrc-run
+
+name="nginx"
+description="Nginx web server"
+command="/usr/sbin/nginx"
+command_args="-g 'daemon off; master_process on;'"
+command_background="yes"
+pidfile="/run/nginx.pid"
+required_files="/etc/nginx/nginx.conf"
+extra_started_commands="reload"
+
+depend() {
+    need net
+}
+
+start_pre() {
+    checkpath --directory --mode 0755 /run
+    /usr/sbin/nginx -t -q -g 'daemon on; master_process on;'
+}
+
+reload() {
+    start_pre || return 1
+    ebegin "Reloading nginx"
+    /usr/sbin/nginx -s reload
+    eend $?
+}
+SERVICEEOF
+  chmod +x /etc/init.d/nginx
+  service_enable nginx
+else
+  cat > /etc/systemd/system/nginx.service << 'SERVICEEOF'
 [Unit]
 Description=A high performance web server and a reverse proxy server
 Documentation=man:nginx(8)
@@ -363,9 +533,14 @@ KillMode=mixed
 WantedBy=multi-user.target
 SERVICEEOF
 
-systemctl daemon-reload
-systemctl enable nginx.service
+  systemctl daemon-reload
+  service_enable nginx.service
+fi
 echo ""
+
+# ==================================================
+# 服务端配置生成
+# ==================================================
 
 info "[4/6] 生成配置文件"
 
@@ -612,6 +787,10 @@ XRAYEOF
 
 echo ""
 
+# ==================================================
+# 启动服务与配置自检
+# ==================================================
+
 info "[5/6] 启动服务"
 
 info "配置证书自动续签命令..."
@@ -619,7 +798,7 @@ mkdir -p /etc/ssl/private
 acme.sh --install-cert -d "$REALITY_DOMAIN" --ecc \
   --key-file /etc/ssl/private/private.key \
   --fullchain-file /etc/ssl/private/fullchain.cer \
-  --reloadcmd "systemctl restart nginx"
+  --reloadcmd "${NGINX_RESTART_CMD}"
 
 info "测试 Nginx 配置..."
 nginx -t
@@ -628,15 +807,19 @@ info "测试 Xray 配置..."
 xray -test -config /usr/local/etc/xray/config.json
 
 info "启动服务..."
-systemctl restart xray
-systemctl restart nginx
+service_restart xray
+service_restart nginx
 sleep 1
-systemctl is-active --quiet xray || error "Xray 启动失败"
-systemctl is-active --quiet nginx || error "Nginx 启动失败"
+service_is_active xray || error "Xray 启动失败"
+service_is_active nginx || error "Nginx 启动失败"
 info "Xray 运行中"
 info "Nginx 运行中"
 
 echo ""
+
+# ==================================================
+# 客户端配置生成
+# ==================================================
 
 info "[6/6] 生成客户端配置"
 XHTTP_PATH_ENC=$(echo "$XHTTP_PATH" | sed 's|/|%2F|g')
@@ -1296,6 +1479,10 @@ rules:
   - MATCH,漏网之鱼
 MIHOMOEOF
 
+# ==================================================
+# 订阅文件与二维码输出
+# ==================================================
+
 SUB_CONF_DIR="/etc/xhttp-cdn"
 SUB_TOKEN_FILE="${SUB_CONF_DIR}/sub_token"
 install -d -m 700 "$SUB_CONF_DIR"
@@ -1384,6 +1571,10 @@ $MIHOMO_SUB_URL
 V2RayN / Shadowrocket: $V2RAYN_QR_FILE
 Mihomo: $MIHOMO_QR_FILE
 SUBLINKEOF
+
+# ==================================================
+# 最终结果输出
+# ==================================================
 
 echo -e "\n${CYAN}[+] 部署完成${NC}\n"
 echo -e "${YELLOW}[+] 服务端参数${NC}"

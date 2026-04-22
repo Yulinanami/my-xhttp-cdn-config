@@ -38,13 +38,18 @@
 > **注意**：需要 Mihomo 内核版本≥1.19.23。
 
 ```bash
+# 先切换到root用户
+sudo -i
+
 bash <(curl -fsSL https://raw.githubusercontent.com/Yulinanami/my-xhttp-cdn-config/refs/heads/master/install.sh)
 ```
 
-或者下载后运行：
+Alpine Linux：
+```sh
+# 先切换到root用户
+doas -s
 
-```bash
-wget -O install.sh https://raw.githubusercontent.com/Yulinanami/my-xhttp-cdn-config/refs/heads/master/install.sh && bash install.sh
+apk add --no-cache bash curl && curl -fsSL https://raw.githubusercontent.com/Yulinanami/my-xhttp-cdn-config/refs/heads/master/install.sh | bash
 ```
 
 ---
@@ -58,10 +63,10 @@ wget -O install.sh https://raw.githubusercontent.com/Yulinanami/my-xhttp-cdn-con
 bash <(curl -fsSL https://raw.githubusercontent.com/Yulinanami/my-xhttp-cdn-config/refs/heads/master/install-xpadding.sh)
 ```
 
-或者：
+Alpine Linux：
 
-```bash
-wget -O install-xpadding.sh https://raw.githubusercontent.com/Yulinanami/my-xhttp-cdn-config/refs/heads/master/install-xpadding.sh && bash install-xpadding.sh
+```sh
+apk add --no-cache bash curl && curl -fsSL https://raw.githubusercontent.com/Yulinanami/my-xhttp-cdn-config/refs/heads/master/install-xpadding.sh | bash
 ```
 
 ---
