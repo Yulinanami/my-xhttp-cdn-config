@@ -801,54 +801,68 @@ log-level: info
 ipv6: true
 unified-delay: true
 
+sniffer:
+  enable: true
+  force-dns-mapping: true
+  parse-pure-ip: true
+  override-destination: true
+  sniff:
+    HTTP:
+      ports: [80, 8080-8880]
+      override-destination: true
+    TLS:
+      ports: [443, 8443]
+    QUIC:
+      ports: [443, 8443]
+
 dns:
   enable: true
-  listen: "0.0.0.0:1053"
+  listen: 0.0.0.0:1053
   ipv6: true
   prefer-h3: false
   respect-rules: true
   use-system-hosts: false
-  cache-algorithm: "arc"
+  cache-algorithm: arc
   enhanced-mode: fake-ip
-  fake-ip-range: "198.18.0.1/16"
+  fake-ip-range: 198.18.0.1/16
   fake-ip-filter:
-    - "+.lan"
-    - "+.local"
-    - "+.msftconnecttest.com"
-    - "+.msftncsi.com"
-    - "localhost.ptlogin2.qq.com"
-    - "localhost.sec.qq.com"
-    - "+.in-addr.arpa"
-    - "+.ip6.arpa"
-    - "time.*.com"
-    - "time.*.gov"
-    - "pool.ntp.org"
-    - "localhost.work.weixin.qq.com"
+    - +.lan
+    - +.local
+    - +.msftconnecttest.com
+    - +.msftncsi.com
+    - localhost.ptlogin2.qq.com
+    - localhost.sec.qq.com
+    - +.in-addr.arpa
+    - +.ip6.arpa
+    - time.*.com
+    - time.*.gov
+    - pool.ntp.org
+    - localhost.work.weixin.qq.com
   default-nameserver:
-    - "223.5.5.5"
-    - "1.2.4.8"
+    - 223.5.5.5
+    - 1.2.4.8
   nameserver:
-    - "https://208.67.222.222/dns-query"
-    - "https://77.88.8.8/dns-query"
-    - "https://1.1.1.1/dns-query"
-    - "https://8.8.4.4/dns-query"
+    - https://208.67.222.222/dns-query
+    - https://77.88.8.8/dns-query
+    - https://1.1.1.1/dns-query
+    - https://8.8.4.4/dns-query
   proxy-server-nameserver:
-    - "https://223.5.5.5/dns-query"
-    - "https://doh.pub/dns-query"
+    - https://223.5.5.5/dns-query
+    - https://doh.pub/dns-query
   direct-nameserver:
-    - "https://223.5.5.5/dns-query"
-    - "https://doh.pub/dns-query"
+    - https://223.5.5.5/dns-query
+    - https://doh.pub/dns-query
   nameserver-policy:
     "geosite:private,cn":
-      - "https://223.5.5.5/dns-query"
-      - "https://doh.pub/dns-query"
+      - https://223.5.5.5/dns-query
+      - https://doh.pub/dns-query
 
 proxies:
-  - name: "reality+vision 直连"
+  - name: reality+vision 直连
     type: vless
-    server: "${VPS_IP}"
+    server: ${VPS_IP}
     port: 443
-    uuid: "${UUID1}"
+    uuid: ${UUID1}
     udp: true
     tls: true
     flow: xtls-rprx-vision
@@ -856,133 +870,133 @@ proxies:
     network: tcp
     alpn:
       - h2
-    servername: "${REALITY_DOMAIN}"
+    servername: ${REALITY_DOMAIN}
     client-fingerprint: chrome
     reality-opts:
-      public-key: "${PUBLIC_KEY}"
-      short-id: "${SHORT_ID}"
+      public-key: ${PUBLIC_KEY}
+      short-id: ${SHORT_ID}
 
-  - name: "xhttp+Reality 上下行不分离"
+  - name: xhttp+Reality 上下行不分离
     type: vless
-    server: "${VPS_IP}"
+    server: ${VPS_IP}
     port: 443
-    uuid: "${UUID2}"
+    uuid: ${UUID2}
     udp: true
     flow: ""
     tls: true
-    encryption: "${VLESSENC_ENCRYPTION}"
+    encryption: ${VLESSENC_ENCRYPTION}
     network: xhttp
     alpn:
       - h2
-    servername: "${REALITY_DOMAIN}"
+    servername: ${REALITY_DOMAIN}
     client-fingerprint: chrome
     reality-opts:
-      public-key: "${PUBLIC_KEY}"
-      short-id: "${SHORT_ID}"
+      public-key: ${PUBLIC_KEY}
+      short-id: ${SHORT_ID}
     xhttp-opts:
-      path: "${XHTTP_PATH}"
+      path: ${XHTTP_PATH}
       mode: auto
       reuse-settings:
         max-concurrency: "16-32"
         c-max-reuse-times: "0"
         h-max-reusable-secs: "1800-3000"
 
-  - name: "上行 xhttp+TLS+CDN | 下行 xhttp+Reality"
+  - name: 上行 xhttp+TLS+CDN | 下行 xhttp+Reality
     type: vless
-    server: "${CDN_DOMAIN}"
+    server: ${CDN_DOMAIN}
     port: 443
-    uuid: "${UUID2}"
+    uuid: ${UUID2}
     udp: true
     flow: ""
     tls: true
-    encryption: "${VLESSENC_ENCRYPTION}"
+    encryption: ${VLESSENC_ENCRYPTION}
     network: xhttp
     alpn:
       - h2
-    servername: "${CDN_DOMAIN}"
+    servername: ${CDN_DOMAIN}
     client-fingerprint: chrome
     xhttp-opts:
-      host: "${CDN_DOMAIN}"
-      path: "${XHTTP_PATH}"
+      host: ${CDN_DOMAIN}
+      path: ${XHTTP_PATH}
       mode: auto
       reuse-settings:
         max-concurrency: "16-32"
         c-max-reuse-times: "0"
         h-max-reusable-secs: "1800-3000"
       download-settings:
-        path: "${XHTTP_PATH}"
-        server: "${VPS_IP}"
+        path: ${XHTTP_PATH}
+        server: ${VPS_IP}
         port: 443
         tls: true
         alpn:
           - h2
-        servername: "${REALITY_DOMAIN}"
+        servername: ${REALITY_DOMAIN}
         client-fingerprint: chrome
         reality-opts:
-          public-key: "${PUBLIC_KEY}"
-          short-id: "${SHORT_ID}"
+          public-key: ${PUBLIC_KEY}
+          short-id: ${SHORT_ID}
         reuse-settings:
           max-concurrency: "16-32"
           c-max-reuse-times: "0"
           h-max-reusable-secs: "1800-3000"
 
-  - name: "xhttp+TLS 双向 CDN"
+  - name: xhttp+TLS 双向 CDN
     type: vless
-    server: "${CDN_DOMAIN}"
+    server: ${CDN_DOMAIN}
     port: 443
-    uuid: "${UUID2}"
+    uuid: ${UUID2}
     udp: true
     flow: ""
     tls: true
     network: xhttp
     alpn:
       - h2
-    servername: "${CDN_DOMAIN}"
+    servername: ${CDN_DOMAIN}
     client-fingerprint: chrome
-    encryption: "${VLESSENC_ENCRYPTION}"
+    encryption: ${VLESSENC_ENCRYPTION}
     xhttp-opts:
-      host: "${CDN_DOMAIN}"
-      path: "${XHTTP_PATH}"
+      host: ${CDN_DOMAIN}
+      path: ${XHTTP_PATH}
       mode: auto
       reuse-settings:
         max-concurrency: "16-32"
         c-max-reuse-times: "0"
         h-max-reusable-secs: "1800-3000"
 
-  - name: "上行 xhttp+Reality | 下行 xhttp+TLS+CDN"
+  - name: 上行 xhttp+Reality | 下行 xhttp+TLS+CDN
     type: vless
-    server: "${VPS_IP}"
+    server: ${VPS_IP}
     port: 443
-    uuid: "${UUID2}"
+    uuid: ${UUID2}
     udp: true
     flow: ""
     tls: true
     network: xhttp
     alpn:
       - h2
-    servername: "${REALITY_DOMAIN}"
+    servername: ${REALITY_DOMAIN}
     client-fingerprint: chrome
     reality-opts:
-      public-key: "${PUBLIC_KEY}"
-      short-id: "${SHORT_ID}"
-    encryption: "${VLESSENC_ENCRYPTION}"
+      public-key: ${PUBLIC_KEY}
+      short-id: ${SHORT_ID}
+    encryption: ${VLESSENC_ENCRYPTION}
     xhttp-opts:
-      host: "${CDN_DOMAIN}"
-      path: "${XHTTP_PATH}"
+      host: ${CDN_DOMAIN}
+      path: ${XHTTP_PATH}
       mode: auto
       reuse-settings:
         max-concurrency: "16-32"
         c-max-reuse-times: "0"
         h-max-reusable-secs: "1800-3000"
       download-settings:
-        host: "${CDN_DOMAIN}"
-        path: "${XHTTP_PATH}"
-        server: "${CDN_DOMAIN}"
+        host: ${CDN_DOMAIN}
+        path: ${XHTTP_PATH}
+        server: ${CDN_DOMAIN}
         port: 443
         tls: true
         alpn:
           - h2
-        servername: "${CDN_DOMAIN}"
+        servername: ${CDN_DOMAIN}
         client-fingerprint: chrome
         reality-opts: { public-key: "" }
         reuse-settings:
@@ -991,225 +1005,225 @@ proxies:
           h-max-reusable-secs: "1800-3000"
 
 proxy-groups:
-  - name: "节点选择"
+  - name: 节点选择
     type: select
     interval: 300
     timeout: 3000
-    url: "https://www.google.com/generate_204"
+    url: https://www.google.com/generate_204
     lazy: true
     max-failed-times: 3
     hidden: false
     include-all: true
-    filter: "^(?!.*(官网|套餐|流量|异常|剩余)).*$"
-    icon: "https://fastly.jsdelivr.net/gh/clash-verge-rev/clash-verge-rev.github.io@main/docs/assets/icons/adjust.svg"
+    filter: ^(?!.*(官网|套餐|流量|异常|剩余)).*$
+    icon: https://fastly.jsdelivr.net/gh/clash-verge-rev/clash-verge-rev.github.io@main/docs/assets/icons/adjust.svg
 
-  - name: "谷歌服务"
+  - name: 谷歌服务
     type: select
     interval: 300
     timeout: 3000
-    url: "https://www.google.com/generate_204"
+    url: https://www.google.com/generate_204
     lazy: true
     max-failed-times: 3
     hidden: false
     proxies:
-      - "节点选择"
-      - "全局直连"
+      - 节点选择
+      - 全局直连
     include-all: true
-    icon: "https://fastly.jsdelivr.net/gh/clash-verge-rev/clash-verge-rev.github.io@main/docs/assets/icons/google.svg"
+    icon: https://fastly.jsdelivr.net/gh/clash-verge-rev/clash-verge-rev.github.io@main/docs/assets/icons/google.svg
 
-  - name: "YouTube"
+  - name: YouTube
     type: select
     interval: 300
     timeout: 3000
-    url: "https://www.google.com/generate_204"
+    url: https://www.google.com/generate_204
     lazy: true
     max-failed-times: 3
     hidden: false
     proxies:
-      - "节点选择"
-      - "全局直连"
+      - 节点选择
+      - 全局直连
     include-all: true
-    icon: "https://fastly.jsdelivr.net/gh/clash-verge-rev/clash-verge-rev.github.io@main/docs/assets/icons/youtube.svg"
+    icon: https://fastly.jsdelivr.net/gh/clash-verge-rev/clash-verge-rev.github.io@main/docs/assets/icons/youtube.svg
 
-  - name: "Netflix"
+  - name: Netflix
     type: select
     interval: 300
     timeout: 3000
-    url: "https://www.google.com/generate_204"
+    url: https://www.google.com/generate_204
     lazy: true
     max-failed-times: 3
     hidden: false
     proxies:
-      - "节点选择"
-      - "全局直连"
+      - 节点选择
+      - 全局直连
     include-all: true
-    icon: "https://fastly.jsdelivr.net/gh/xiaolin-007/clash@main/icon/netflix.svg"
+    icon: https://fastly.jsdelivr.net/gh/xiaolin-007/clash@main/icon/netflix.svg
 
-  - name: "电报消息"
+  - name: 电报消息
     type: select
     interval: 300
     timeout: 3000
-    url: "https://www.google.com/generate_204"
+    url: https://www.google.com/generate_204
     lazy: true
     max-failed-times: 3
     hidden: false
     proxies:
-      - "节点选择"
-      - "全局直连"
+      - 节点选择
+      - 全局直连
     include-all: true
-    icon: "https://fastly.jsdelivr.net/gh/clash-verge-rev/clash-verge-rev.github.io@main/docs/assets/icons/telegram.svg"
+    icon: https://fastly.jsdelivr.net/gh/clash-verge-rev/clash-verge-rev.github.io@main/docs/assets/icons/telegram.svg
 
-  - name: "AI"
+  - name: AI
     type: select
     interval: 300
     timeout: 3000
-    url: "https://www.google.com/generate_204"
+    url: https://www.google.com/generate_204
     lazy: true
     max-failed-times: 3
     hidden: false
     proxies:
-      - "节点选择"
+      - 节点选择
     include-all: true
-    icon: "https://fastly.jsdelivr.net/gh/clash-verge-rev/clash-verge-rev.github.io@main/docs/assets/icons/chatgpt.svg"
+    icon: https://fastly.jsdelivr.net/gh/clash-verge-rev/clash-verge-rev.github.io@main/docs/assets/icons/chatgpt.svg
 
-  - name: "TikTok"
+  - name: TikTok
     type: select
     interval: 300
     timeout: 3000
-    url: "https://www.google.com/generate_204"
+    url: https://www.google.com/generate_204
     lazy: true
     max-failed-times: 3
     hidden: false
     proxies:
-      - "节点选择"
+      - 节点选择
     include-all: true
-    icon: "https://fastly.jsdelivr.net/gh/xiaolin-007/clash@main/icon/tiktok.svg"
+    icon: https://fastly.jsdelivr.net/gh/xiaolin-007/clash@main/icon/tiktok.svg
 
-  - name: "微软服务"
+  - name: 微软服务
     type: select
     interval: 300
     timeout: 3000
-    url: "https://www.google.com/generate_204"
+    url: https://www.google.com/generate_204
     lazy: true
     max-failed-times: 3
     hidden: false
     proxies:
-      - "全局直连"
-      - "节点选择"
+      - 全局直连
+      - 节点选择
     include-all: true
-    icon: "https://fastly.jsdelivr.net/gh/clash-verge-rev/clash-verge-rev.github.io@main/docs/assets/icons/microsoft.svg"
+    icon: https://fastly.jsdelivr.net/gh/clash-verge-rev/clash-verge-rev.github.io@main/docs/assets/icons/microsoft.svg
 
-  - name: "苹果服务"
+  - name: 苹果服务
     type: select
     interval: 300
     timeout: 3000
-    url: "https://www.google.com/generate_204"
+    url: https://www.google.com/generate_204
     lazy: true
     max-failed-times: 3
     hidden: false
     proxies:
-      - "节点选择"
-      - "全局直连"
+      - 节点选择
+      - 全局直连
     include-all: true
-    icon: "https://fastly.jsdelivr.net/gh/clash-verge-rev/clash-verge-rev.github.io@main/docs/assets/icons/apple.svg"
+    icon: https://fastly.jsdelivr.net/gh/clash-verge-rev/clash-verge-rev.github.io@main/docs/assets/icons/apple.svg
 
-  - name: "动画疯"
+  - name: 动画疯
     type: select
     interval: 300
     timeout: 3000
-    url: "https://www.google.com/generate_204"
+    url: https://www.google.com/generate_204
     lazy: true
     max-failed-times: 3
     hidden: false
     proxies:
-      - "节点选择"
+      - 节点选择
     include-all: true
-    filter: "(?i)台|tw|TW"
-    icon: "https://fastly.jsdelivr.net/gh/xiaolin-007/clash@main/icon/Bahamut.svg"
+    filter: (?i)台|tw|TW
+    icon: https://fastly.jsdelivr.net/gh/xiaolin-007/clash@main/icon/Bahamut.svg
 
-  - name: "哔哩哔哩港澳台"
+  - name: 哔哩哔哩港澳台
     type: select
     interval: 300
     timeout: 3000
-    url: "https://www.google.com/generate_204"
+    url: https://www.google.com/generate_204
     lazy: true
     max-failed-times: 3
     hidden: false
     proxies:
-      - "全局直连"
-      - "节点选择"
+      - 全局直连
+      - 节点选择
     include-all: true
-    filter: "^(?!.*(官网|套餐|流量|异常|剩余)).*$"
-    icon: "https://fastly.jsdelivr.net/gh/xiaolin-007/clash@main/icon/bilibili.svg"
+    filter: ^(?!.*(官网|套餐|流量|异常|剩余)).*$
+    icon: https://fastly.jsdelivr.net/gh/xiaolin-007/clash@main/icon/bilibili.svg
 
-  - name: "Spotify"
+  - name: Spotify
     type: select
     interval: 300
     timeout: 3000
-    url: "https://www.google.com/generate_204"
+    url: https://www.google.com/generate_204
     lazy: true
     max-failed-times: 3
     hidden: false
     proxies:
-      - "节点选择"
-      - "全局直连"
+      - 节点选择
+      - 全局直连
     include-all: true
-    icon: "https://fastly.jsdelivr.net/gh/xiaolin-007/clash@main/icon/spotify.svg"
+    icon: https://fastly.jsdelivr.net/gh/xiaolin-007/clash@main/icon/spotify.svg
 
-  - name: "广告过滤"
+  - name: 广告过滤
     type: select
     interval: 300
     timeout: 3000
-    url: "https://www.google.com/generate_204"
+    url: https://www.google.com/generate_204
     lazy: true
     max-failed-times: 3
     hidden: false
     proxies:
-      - "REJECT"
-      - "DIRECT"
-    icon: "https://fastly.jsdelivr.net/gh/clash-verge-rev/clash-verge-rev.github.io@main/docs/assets/icons/bug.svg"
+      - REJECT
+      - DIRECT
+    icon: https://fastly.jsdelivr.net/gh/clash-verge-rev/clash-verge-rev.github.io@main/docs/assets/icons/bug.svg
 
-  - name: "全局直连"
+  - name: 全局直连
     type: select
     interval: 300
     timeout: 3000
-    url: "https://www.google.com/generate_204"
+    url: https://www.google.com/generate_204
     lazy: true
     max-failed-times: 3
     hidden: false
     proxies:
-      - "DIRECT"
-      - "节点选择"
+      - DIRECT
+      - 节点选择
     include-all: true
-    icon: "https://fastly.jsdelivr.net/gh/clash-verge-rev/clash-verge-rev.github.io@main/docs/assets/icons/link.svg"
+    icon: https://fastly.jsdelivr.net/gh/clash-verge-rev/clash-verge-rev.github.io@main/docs/assets/icons/link.svg
 
-  - name: "全局拦截"
+  - name: 全局拦截
     type: select
     interval: 300
     timeout: 3000
-    url: "https://www.google.com/generate_204"
+    url: https://www.google.com/generate_204
     lazy: true
     max-failed-times: 3
     hidden: false
     proxies:
-      - "REJECT"
-      - "DIRECT"
-    icon: "https://fastly.jsdelivr.net/gh/clash-verge-rev/clash-verge-rev.github.io@main/docs/assets/icons/block.svg"
+      - REJECT
+      - DIRECT
+    icon: https://fastly.jsdelivr.net/gh/clash-verge-rev/clash-verge-rev.github.io@main/docs/assets/icons/block.svg
 
-  - name: "漏网之鱼"
+  - name: 漏网之鱼
     type: select
     interval: 300
     timeout: 3000
-    url: "https://www.google.com/generate_204"
+    url: https://www.google.com/generate_204
     lazy: true
     max-failed-times: 3
     hidden: false
     proxies:
-      - "节点选择"
-      - "全局直连"
+      - 节点选择
+      - 全局直连
     include-all: true
-    filter: "^(?!.*(官网|套餐|流量|异常|剩余)).*$"
-    icon: "https://fastly.jsdelivr.net/gh/clash-verge-rev/clash-verge-rev.github.io@main/docs/assets/icons/fish.svg"
+    filter: ^(?!.*(官网|套餐|流量|异常|剩余)).*$
+    icon: https://fastly.jsdelivr.net/gh/clash-verge-rev/clash-verge-rev.github.io@main/docs/assets/icons/fish.svg
 
 rule-providers:
   reject:
@@ -1217,141 +1231,141 @@ rule-providers:
     behavior: domain
     format: yaml
     interval: 86400
-    url: "https://fastly.jsdelivr.net/gh/Loyalsoldier/clash-rules@release/reject.txt"
-    path: "./ruleset/loyalsoldier/reject.yaml"
+    url: https://fastly.jsdelivr.net/gh/Loyalsoldier/clash-rules@release/reject.txt
+    path: ./ruleset/loyalsoldier/reject.yaml
   icloud:
     type: http
     behavior: domain
     format: yaml
     interval: 86400
-    url: "https://fastly.jsdelivr.net/gh/Loyalsoldier/clash-rules@release/icloud.txt"
-    path: "./ruleset/loyalsoldier/icloud.yaml"
+    url: https://fastly.jsdelivr.net/gh/Loyalsoldier/clash-rules@release/icloud.txt
+    path: ./ruleset/loyalsoldier/icloud.yaml
   apple:
     type: http
     behavior: domain
     format: yaml
     interval: 86400
-    url: "https://fastly.jsdelivr.net/gh/Loyalsoldier/clash-rules@release/apple.txt"
-    path: "./ruleset/loyalsoldier/apple.yaml"
+    url: https://fastly.jsdelivr.net/gh/Loyalsoldier/clash-rules@release/apple.txt
+    path: ./ruleset/loyalsoldier/apple.yaml
   google:
     type: http
     behavior: domain
     format: yaml
     interval: 86400
-    url: "https://fastly.jsdelivr.net/gh/Loyalsoldier/clash-rules@release/google.txt"
-    path: "./ruleset/loyalsoldier/google.yaml"
+    url: https://fastly.jsdelivr.net/gh/Loyalsoldier/clash-rules@release/google.txt
+    path: ./ruleset/loyalsoldier/google.yaml
   proxy:
     type: http
     behavior: domain
     format: yaml
     interval: 86400
-    url: "https://fastly.jsdelivr.net/gh/Loyalsoldier/clash-rules@release/proxy.txt"
-    path: "./ruleset/loyalsoldier/proxy.yaml"
+    url: https://fastly.jsdelivr.net/gh/Loyalsoldier/clash-rules@release/proxy.txt
+    path: ./ruleset/loyalsoldier/proxy.yaml
   direct:
     type: http
     behavior: domain
     format: yaml
     interval: 86400
-    url: "https://fastly.jsdelivr.net/gh/Loyalsoldier/clash-rules@release/direct.txt"
-    path: "./ruleset/loyalsoldier/direct.yaml"
+    url: https://fastly.jsdelivr.net/gh/Loyalsoldier/clash-rules@release/direct.txt
+    path: ./ruleset/loyalsoldier/direct.yaml
   private:
     type: http
     behavior: domain
     format: yaml
     interval: 86400
-    url: "https://fastly.jsdelivr.net/gh/Loyalsoldier/clash-rules@release/private.txt"
-    path: "./ruleset/loyalsoldier/private.yaml"
+    url: https://fastly.jsdelivr.net/gh/Loyalsoldier/clash-rules@release/private.txt
+    path: ./ruleset/loyalsoldier/private.yaml
   gfw:
     type: http
     behavior: domain
     format: yaml
     interval: 86400
-    url: "https://fastly.jsdelivr.net/gh/Loyalsoldier/clash-rules@release/gfw.txt"
-    path: "./ruleset/loyalsoldier/gfw.yaml"
+    url: https://fastly.jsdelivr.net/gh/Loyalsoldier/clash-rules@release/gfw.txt
+    path: ./ruleset/loyalsoldier/gfw.yaml
   tld-not-cn:
     type: http
     behavior: domain
     format: yaml
     interval: 86400
-    url: "https://fastly.jsdelivr.net/gh/Loyalsoldier/clash-rules@release/tld-not-cn.txt"
-    path: "./ruleset/loyalsoldier/tld-not-cn.yaml"
+    url: https://fastly.jsdelivr.net/gh/Loyalsoldier/clash-rules@release/tld-not-cn.txt
+    path: ./ruleset/loyalsoldier/tld-not-cn.yaml
   telegramcidr:
     type: http
     behavior: ipcidr
     format: yaml
     interval: 86400
-    url: "https://fastly.jsdelivr.net/gh/Loyalsoldier/clash-rules@release/telegramcidr.txt"
-    path: "./ruleset/loyalsoldier/telegramcidr.yaml"
+    url: https://fastly.jsdelivr.net/gh/Loyalsoldier/clash-rules@release/telegramcidr.txt
+    path: ./ruleset/loyalsoldier/telegramcidr.yaml
   cncidr:
     type: http
     behavior: ipcidr
     format: yaml
     interval: 86400
-    url: "https://fastly.jsdelivr.net/gh/Loyalsoldier/clash-rules@release/cncidr.txt"
-    path: "./ruleset/loyalsoldier/cncidr.yaml"
+    url: https://fastly.jsdelivr.net/gh/Loyalsoldier/clash-rules@release/cncidr.txt
+    path: ./ruleset/loyalsoldier/cncidr.yaml
   lancidr:
     type: http
     behavior: ipcidr
     format: yaml
     interval: 86400
-    url: "https://fastly.jsdelivr.net/gh/Loyalsoldier/clash-rules@release/lancidr.txt"
-    path: "./ruleset/loyalsoldier/lancidr.yaml"
+    url: https://fastly.jsdelivr.net/gh/Loyalsoldier/clash-rules@release/lancidr.txt
+    path: ./ruleset/loyalsoldier/lancidr.yaml
   applications:
     type: http
     behavior: classical
     format: yaml
     interval: 86400
-    url: "https://fastly.jsdelivr.net/gh/Loyalsoldier/clash-rules@release/applications.txt"
-    path: "./ruleset/loyalsoldier/applications.yaml"
+    url: https://fastly.jsdelivr.net/gh/Loyalsoldier/clash-rules@release/applications.txt
+    path: ./ruleset/loyalsoldier/applications.yaml
   bahamut:
     type: http
     behavior: classical
     format: yaml
     interval: 86400
-    url: "https://fastly.jsdelivr.net/gh/xiaolin-007/clash@main/rule/Bahamut.txt"
-    path: "./ruleset/xiaolin-007/bahamut.yaml"
+    url: https://fastly.jsdelivr.net/gh/xiaolin-007/clash@main/rule/Bahamut.txt
+    path: ./ruleset/xiaolin-007/bahamut.yaml
   YouTube:
     type: http
     behavior: classical
     format: yaml
     interval: 86400
-    url: "https://fastly.jsdelivr.net/gh/xiaolin-007/clash@main/rule/YouTube.txt"
-    path: "./ruleset/xiaolin-007/YouTube.yaml"
+    url: https://fastly.jsdelivr.net/gh/xiaolin-007/clash@main/rule/YouTube.txt
+    path: ./ruleset/xiaolin-007/YouTube.yaml
   Netflix:
     type: http
     behavior: classical
     format: yaml
     interval: 86400
-    url: "https://fastly.jsdelivr.net/gh/xiaolin-007/clash@main/rule/Netflix.txt"
-    path: "./ruleset/xiaolin-007/Netflix.yaml"
+    url: https://fastly.jsdelivr.net/gh/xiaolin-007/clash@main/rule/Netflix.txt
+    path: ./ruleset/xiaolin-007/Netflix.yaml
   Spotify:
     type: http
     behavior: classical
     format: yaml
     interval: 86400
-    url: "https://fastly.jsdelivr.net/gh/xiaolin-007/clash@main/rule/Spotify.txt"
-    path: "./ruleset/xiaolin-007/Spotify.yaml"
+    url: https://fastly.jsdelivr.net/gh/xiaolin-007/clash@main/rule/Spotify.txt
+    path: ./ruleset/xiaolin-007/Spotify.yaml
   BilibiliHMT:
     type: http
     behavior: classical
     format: yaml
     interval: 86400
-    url: "https://fastly.jsdelivr.net/gh/xiaolin-007/clash@main/rule/BilibiliHMT.txt"
-    path: "./ruleset/xiaolin-007/BilibiliHMT.yaml"
+    url: https://fastly.jsdelivr.net/gh/xiaolin-007/clash@main/rule/BilibiliHMT.txt
+    path: ./ruleset/xiaolin-007/BilibiliHMT.yaml
   AI:
     type: http
     behavior: classical
     format: yaml
     interval: 86400
-    url: "https://fastly.jsdelivr.net/gh/xiaolin-007/clash@main/rule/AI.txt"
-    path: "./ruleset/xiaolin-007/AI.yaml"
+    url: https://fastly.jsdelivr.net/gh/xiaolin-007/clash@main/rule/AI.txt
+    path: ./ruleset/xiaolin-007/AI.yaml
   TikTok:
     type: http
     behavior: classical
     format: yaml
     interval: 86400
-    url: "https://fastly.jsdelivr.net/gh/xiaolin-007/clash@main/rule/TikTok.txt"
-    path: "./ruleset/xiaolin-007/TikTok.yaml"
+    url: https://fastly.jsdelivr.net/gh/xiaolin-007/clash@main/rule/TikTok.txt
+    path: ./ruleset/xiaolin-007/TikTok.yaml
 
 rules:
   - DOMAIN-SUFFIX,googleapis.cn,节点选择
