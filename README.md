@@ -61,7 +61,7 @@
 sudo -i
 
 # 下载脚本
-curl -fsSL https://raw.githubusercontent.com/Yulinanami/my-xhttp-cdn-config/refs/heads/master/install.sh -o ~/install.sh
+curl -fsSL https://github.com/Yulinanami/my-xhttp-cdn-config/releases/latest/download/install.sh -o ~/install.sh
 
 # 执行脚本
 bash ~/install.sh
@@ -76,7 +76,7 @@ doas -s
 apk add --no-cache bash curl
 
 # 下载脚本
-curl -fsSL https://raw.githubusercontent.com/Yulinanami/my-xhttp-cdn-config/refs/heads/master/install.sh -o ~/install.sh
+curl -fsSL https://github.com/Yulinanami/my-xhttp-cdn-config/releases/latest/download/install.sh -o ~/install.sh
 
 # 执行脚本
 bash ~/install.sh
@@ -91,7 +91,7 @@ bash ~/install.sh
 ```bash
 sudo -i
 
-curl -fsSL https://raw.githubusercontent.com/Yulinanami/my-xhttp-cdn-config/refs/heads/master/install-xpadding.sh -o ~/install-xpadding.sh
+curl -fsSL https://github.com/Yulinanami/my-xhttp-cdn-config/releases/latest/download/install-xpadding.sh -o ~/install-xpadding.sh
 
 bash ~/install-xpadding.sh
 ```
@@ -103,7 +103,7 @@ doas -s
 
 apk add --no-cache bash curl
 
-curl -fsSL https://raw.githubusercontent.com/Yulinanami/my-xhttp-cdn-config/refs/heads/master/install-xpadding.sh -o ~/install-xpadding.sh
+curl -fsSL https://github.com/Yulinanami/my-xhttp-cdn-config/releases/latest/download/install-xpadding.sh -o ~/install-xpadding.sh
 
 bash ~/install-xpadding.sh
 ```
@@ -202,6 +202,21 @@ bash ~/install-xpadding.sh
    - `~/subscription-v2rayn.png`
    - `~/subscription-mihomo.png`
    - 同时在终端打印二维码，方便手机扫描导入
+
+---
+
+## 个人开发与发布
+
+修改模块或模板后，在仓库根目录运行代码以构建搭建脚本：
+
+```bash
+bash scripts/build-install.sh
+```
+
+会在 `dist/` 目录生成：
+
+- `install.sh`
+- `install-xpadding.sh`
 
 ---
 

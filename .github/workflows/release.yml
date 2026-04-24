@@ -1,0 +1,42 @@
+name: Build release installers
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build installers
+        run: bash scripts/build-install.sh
+
+      - name: Package source modules
+        run: tar -czf dist/code.tar.gz src templates scripts README.md LICENSE
+
+      - name: Upload workflow artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: installers
+          path: |
+            dist/install.sh
+            dist/install-xpadding.sh
+            dist/code.tar.gz
+
+      - name: Publish GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/install.sh
+            dist/install-xpadding.sh
+            dist/code.tar.gz
