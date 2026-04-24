@@ -213,7 +213,7 @@ bash ~/install-xpadding.sh
 修改模块或模板后，在仓库根目录运行代码以构建搭建脚本：
 
 ```bash
-bash scripts/build-install.sh
+bash .github/scripts/build-install.sh
 ```
 
 会在 `dist/` 目录生成：

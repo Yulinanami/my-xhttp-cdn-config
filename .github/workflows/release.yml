@@ -18,10 +18,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Build installers
-        run: bash scripts/build-install.sh
-
-      - name: Package source modules
-        run: tar -czf dist/code.tar.gz src templates scripts README.md LICENSE
+        run: bash .github/scripts/build-install.sh
 
       - name: Upload workflow artifacts
         uses: actions/upload-artifact@v4
@@ -30,7 +27,6 @@ jobs:
           path: |
             dist/install.sh
             dist/install-xpadding.sh
-            dist/code.tar.gz
 
       - name: Publish GitHub Release
         if: startsWith(github.ref, 'refs/tags/')
@@ -39,4 +35,3 @@ jobs:
           files: |
             dist/install.sh
             dist/install-xpadding.sh
-            dist/code.tar.gz
