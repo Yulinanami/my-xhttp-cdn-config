@@ -17,9 +17,8 @@ install_xray() {
   esac
 
   command -v unzip >/dev/null 2>&1 || pkg_install unzip
-  XRAY_VERSION="v26.3.27"
   tmpdir=$(mktemp -d)
-  curl -fL "https://github.com/XTLS/Xray-core/releases/download/${XRAY_VERSION}/${asset}" -o "${tmpdir}/xray.zip"
+  curl -fL "https://github.com/XTLS/Xray-core/releases/latest/download/${asset}" -o "${tmpdir}/xray.zip"
   unzip -q "${tmpdir}/xray.zip" -d "$tmpdir"
 
   mkdir -p /usr/local/bin /usr/local/etc/xray /usr/local/share/xray /var/log/xray

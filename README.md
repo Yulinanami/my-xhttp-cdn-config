@@ -54,6 +54,9 @@
 > 5. 缓存规则（建议） → 将 XHTTP 路径设为绕过缓存，具体步骤请参考Github仓库的 [环境配置.md](./docs/1.环境配置.md)。
 
 在 VPS (Debian/Ubuntu) 上执行：
+
+### 普通 XHTTP + TLS + CDN
+
 > **注意**：需要 Mihomo 内核版本≥1.19.23。
 
 ```bash
@@ -84,8 +87,8 @@ bash ~/install.sh
 
 ---
 
-## 带 xpadding 和 ECH 的配置版本
-
+### 带 xpadding 和 ECH 的 XHTTP
+> **提示**：配置 xpadding 和 ECH 以绕过 CDN 的阻断
 > **注意**：需要 Xray 内核版本≥`26.2.6`，Mihomo 内核版本≥`1.19.24`。
 
 ```bash
