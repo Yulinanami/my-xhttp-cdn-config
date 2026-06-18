@@ -9,6 +9,12 @@ ln -sf /root/.acme.sh/acme.sh /usr/local/bin/acme.sh
 
 acme.sh --set-default-ca --server letsencrypt
 
+prefer_ipv4_for_acme() {
+  if [[ "$IP_CHOICE" == "1" ]] && ! grep -q '^precedence ::ffff:0:0/96  100' /etc/gai.conf 2>/dev/null; then
+    echo 'precedence ::ffff:0:0/96  100' >> /etc/gai.conf
+  fi
+}
+
 ACME_CERT_HOME="/root/.acme.sh/${REALITY_DOMAIN}_ecc"
 ACME_CERT_CONF="${ACME_CERT_HOME}/${REALITY_DOMAIN}.conf"
 
@@ -37,7 +43,8 @@ issue_dual_cert() {
       --pre-hook "${NGINX_STOP_CMD} 2>/dev/null || true" \
       --post-hook "${NGINX_START_CMD} 2>/dev/null || true"
   else
-    acme.sh --issue -d "$REALITY_DOMAIN" -d "$CDN_DOMAIN" --standalone --keylength ec-256 \
+    prefer_ipv4_for_acme
+    acme.sh --issue -d "$REALITY_DOMAIN" -d "$CDN_DOMAIN" --standalone --listen-v4 --request-v4 --keylength ec-256 \
       --pre-hook "${NGINX_STOP_CMD} 2>/dev/null || true" \
       --post-hook "${NGINX_START_CMD} 2>/dev/null || true"
   fi
