@@ -64,6 +64,18 @@ dns:
 @@include templates/mihomo-proxies.yaml.tmpl
 
 proxy-groups:
+  - name: 前置代理
+    type: select
+    interval: 300
+    timeout: 3000
+    url: https://www.google.com/generate_204
+    lazy: true
+    max-failed-times: 3
+    hidden: false
+    include-all: true
+    filter: ^(?!.*(官网|套餐|流量|异常|剩余)).*$
+    icon: https://fastly.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/svg/1f9ed.svg
+
   - name: 节点选择
     type: select
     interval: 300
