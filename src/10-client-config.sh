@@ -100,15 +100,6 @@ cat > "$MIHOMO_FULL_FILE" << MIHOMOEOF
 @@include templates/mihomo-full.yaml.tmpl
 MIHOMOEOF
 
-# 纯节点配置：强制不写入 ECH
-# 原因：
-# 纯节点配置只包含 proxies，不包含 dns
-# Mihomo 的 ech-opts 在未显式提供 config 时，需要通过 DNS 解析 ECHConfig
-# 如果纯节点配置被用户导入到自己的规则体系里，而用户自己的配置没有配好对应 DNS
-# 节点会因为 ECH 配置解析失败而不通
-MIHOMO_ECH_PROXY_BLOCK=""
-MIHOMO_ECH_DOWNLOAD_BLOCK=""
-
 cat > "$MIHOMO_NODES_FILE" << MIHOMOEOF
 @@include templates/mihomo-nodes.yaml.tmpl
 MIHOMOEOF

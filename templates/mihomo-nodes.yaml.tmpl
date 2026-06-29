@@ -1,6 +1,4 @@
 # Mihomo 纯节点配置
 # 只包含 proxies，适合导入到已有 Mihomo 配置，避免覆盖用户自己的 DNS / 规则 / 策略组
-# 注意：纯节点配置会强制移除 ECH 字段
-# 原因是 ECH 依赖 DNS 解析 ECHConfig，而纯节点配置本身不提供 DNS 配置
 
 @@include templates/mihomo-proxies.yaml.tmpl
