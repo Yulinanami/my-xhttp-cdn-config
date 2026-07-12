@@ -45,8 +45,9 @@
 4. [ECH配置.md](./docs/4.ECH配置.md)，给 CDN-TLS 节点启用 ECH，按此文档补充客户端配置。
 5. [拓展-上下行不同CDN.md](./docs/6.拓展-上下行不同CDN.md)，可选扩展：上行 CDN-A / 下行 CDN-B。
 6. [拓展-上下行IPv4IPv6.md](./docs/7.拓展-上下行IPv4IPv6.md)，可选扩展：上行 IPv4 / 下行 IPv6。
-7. [客户端模板.txt](./客户端模板.txt)，复制到 V2rayN，替换 `YOUR_*` 占位符后使用。
-8. [客户端模板-mihomo.yaml](./客户端模板-mihomo.yaml)，Mihomo内核客户端的配置文件，替换 `YOUR_*` 占位符后导入。
+7. [拓展-常用节点.md](./docs/8.拓展-常用节点.md)，可选扩展：VLESS+WS+TLS+CDN / Hysteria2 直连。
+8. [客户端模板.txt](./客户端模板.txt)，复制到 V2rayN，替换 `YOUR_*` 占位符后使用。
+9. [客户端模板-mihomo.yaml](./客户端模板-mihomo.yaml)，Mihomo内核客户端的配置文件，替换 `YOUR_*` 占位符后导入。
 
 ---
 
@@ -151,6 +152,27 @@ bash ~/add-dual-ip.sh
 - 同步：`xpadding`
 - 输入：`IPv4 Reality 域名 / IPv6 Reality 域名` 及各自回落网站
 
+#### VLESS+WS+TLS+CDN | Hysteria2 直连
+
+```bash
+sudo -i
+curl -fsSL https://github.com/Yulinanami/my-xhttp-cdn-config/releases/latest/download/add-common-nodes.sh -o ~/add-common-nodes.sh
+bash ~/add-common-nodes.sh
+```
+
+Alpine Linux：
+
+```sh
+doas -s
+apk add --no-cache bash curl
+curl -fsSL https://github.com/Yulinanami/my-xhttp-cdn-config/releases/latest/download/add-common-nodes.sh -o ~/add-common-nodes.sh
+bash ~/add-common-nodes.sh
+```
+
+- 复用：主脚本的 `CDN 域名 / Reality 域名 / UUID / 证书`
+- 输入：`WebSocket 路径 / Hysteria2 密码 / 伪装网站`
+- 端口：VLESS 使用 TCP 443；Hysteria2 使用 UDP 443，需在防火墙与安全组放行
+
 ---
 
 ### 输出文件
@@ -175,6 +197,7 @@ bash ~/add-dual-ip.sh
 bash .github/scripts/build-install.sh
 bash .github/scripts/build-dual-cdn.sh
 bash .github/scripts/build-dual-ip.sh
+bash .github/scripts/build-common-nodes.sh
 ```
 
 会在 `dist/` 目录生成：
@@ -183,6 +206,7 @@ bash .github/scripts/build-dual-ip.sh
 - `install-xpadding.sh`
 - `add-dual-cdn.sh`
 - `add-dual-ip.sh`
+- `add-common-nodes.sh`
 
 ---
 

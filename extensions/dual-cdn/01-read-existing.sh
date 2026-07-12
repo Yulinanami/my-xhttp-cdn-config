@@ -20,10 +20,9 @@ REALITY_LINE=$(grep -F '#reality%2Bvision' "$V2RAYN_FILE" | head -n1 | tr -d '\r
 [[ -n "$REALITY_LINE" ]] || error "未找到 reality+vision 节点，无法读取 Reality 域名"
 
 UUID2=$(extract_uri_user "$BASE_LINE")
-CDN_SERVER=$(extract_uri_server "$BASE_LINE")
 DEFAULT_CDN_DOMAIN=$(get_query_param "$BASE_LINE" "host" || true)
 [[ -n "$DEFAULT_CDN_DOMAIN" ]] || DEFAULT_CDN_DOMAIN=$(get_query_param "$BASE_LINE" "sni" || true)
-[[ -n "$DEFAULT_CDN_DOMAIN" ]] || DEFAULT_CDN_DOMAIN="$CDN_SERVER"
+[[ -n "$DEFAULT_CDN_DOMAIN" ]] || DEFAULT_CDN_DOMAIN=$(extract_uri_server "$BASE_LINE")
 XHTTP_PATH=$(get_query_param "$BASE_LINE" "path" || true)
 VLESSENC_ENCRYPTION=$(get_query_param "$BASE_LINE" "encryption" || true)
 BASE_EXTRA_ENC=$(get_query_param "$BASE_LINE" "extra" || true)

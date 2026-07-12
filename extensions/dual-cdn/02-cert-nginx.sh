@@ -191,8 +191,6 @@ cert_domain_targeted() {
   return 1
 }
 
-NGINX_BAK="${NGINX_CONF}.bak.$(date +%Y%m%d%H%M%S)"
-cp "$NGINX_CONF" "$NGINX_BAK"
 tmp_nginx=$(mktemp)
 tmp_nginx_next=$(mktemp)
 cp "$NGINX_CONF" "$tmp_nginx"
@@ -256,7 +254,7 @@ fi
 echo "}" >> "$tmp_nginx"
 cat "$tmp_nginx" > "$NGINX_CONF"
 rm -f "$tmp_nginx" "$tmp_nginx_next"
-info "已为 CDN-A / CDN-B 写入独立回落站，备份: $NGINX_BAK"
+info "已为 CDN-A / CDN-B 写入独立回落站"
 
 {
   [[ "$CDN_A" != "$DEFAULT_CDN_DOMAIN" ]] && echo "$CDN_A"

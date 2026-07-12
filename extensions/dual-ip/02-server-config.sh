@@ -190,8 +190,6 @@ cert_domain_targeted() {
   return 1
 }
 
-NGINX_BAK="${NGINX_CONF}.bak.$(date +%Y%m%d%H%M%S)"
-cp "$NGINX_CONF" "$NGINX_BAK"
 tmp_nginx=$(mktemp)
 tmp_nginx_next=$(mktemp)
 
@@ -216,13 +214,11 @@ append_reality_block "$REALITY_DOMAIN_V6" "$FALLBACK_ORIGIN_V6" "$FALLBACK_HOST_
 echo "}" >> "$tmp_nginx"
 cat "$tmp_nginx" > "$NGINX_CONF"
 rm -f "$tmp_nginx" "$tmp_nginx_next"
-info "已写入 IPv4 / IPv6 Reality 独立回落站，备份: $NGINX_BAK"
+info "已写入 IPv4 / IPv6 Reality 独立回落站"
 
 printf '%s\n%s\n' "$REALITY_DOMAIN_V4" "$REALITY_DOMAIN_V6" > "$DUAL_IP_STATE_FILE"
 chmod 600 "$DUAL_IP_STATE_FILE"
 
-XRAY_BAK="${XRAY_CONF}.bak.$(date +%Y%m%d%H%M%S)"
-cp "$XRAY_CONF" "$XRAY_BAK"
 tmp_xray=$(mktemp)
 awk -v base="$REALITY_DOMAIN" -v v4="$REALITY_DOMAIN_V4" -v v6="$REALITY_DOMAIN_V6" '
   function add_name(name) {
@@ -260,7 +256,7 @@ awk -v base="$REALITY_DOMAIN" -v v4="$REALITY_DOMAIN_V4" -v v6="$REALITY_DOMAIN_
 ' "$XRAY_CONF" > "$tmp_xray"
 cat "$tmp_xray" > "$XRAY_CONF"
 rm -f "$tmp_xray"
-info "已写入 Xray Reality serverNames，备份: $XRAY_BAK"
+info "已写入 Xray Reality serverNames"
 
 nginx -t
 xray -test -config "$XRAY_CONF"
