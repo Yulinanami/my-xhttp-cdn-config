@@ -26,7 +26,7 @@
 
 - VLESS Encryption：启用 VLESS Encryption，防止 CDN 中间人解密流量内容
 - 对 XHTTP 入站启用 vlessenc（因为只有它过 CDN），Vision 直连不需要
-- 默认转发自主动探测请求到斯坦福和哈佛的官网（建议根据自己VPS的所在地区来修改，改成你VPS所在地的大学官网伪装能力会更好）
+- 主脚本可选择由 Nginx 反向代理回落网站，或直接返回用户上传的 `dist` 静态页面
 - 配置 `xpadding` 以绕过 CDN 的潜在检测
 - 配置 `ECH` 以加密 TLS 握手时的 SNI
 - 为了保证vps其它服务的安全和正常工作，不建议在已经部署其它服务的服务器上搭建代理服务，最好用专门用来代理的vps搭建代理
@@ -62,6 +62,8 @@
 > 3. SSL/TLS 加密 → 完全（严格）
 > 4. 网络 → gRPC → 已开启
 > 5. 缓存规则（建议） → 将 XHTTP 路径设为绕过缓存，具体步骤请参考Github仓库的 [环境配置.md](./docs/1.环境配置.md)。
+
+每个入口域名使用独立的 `dist/<域名>/index.html`；可用 [SingleFile](https://chromewebstore.google.com/detail/singlefile/mpiodijhokgodhhofbcjdecpffjipkle?hl=zh-CN&utm_source=ext_sidebar) 抓取网页。
 
 在 VPS (Debian/Ubuntu) 上执行：
 
@@ -130,7 +132,8 @@ bash ~/add-dual-cdn.sh
 ```
 
 - 同步：`xpadding / ECH`
-- 输入：`CDN-A / CDN-B` 及各自回落网站
+- 输入：`CDN-A / CDN-B`
+- 回落：每个新增 CDN 域名单独配置
 
 #### 上行 IPv4 | 下行 IPv6 (需要 vps 拥有 IPv4 和 IPv6)
 
@@ -151,7 +154,8 @@ bash ~/add-dual-ip.sh
 ```
 
 - 同步：`xpadding`
-- 输入：`IPv4 Reality 域名 / IPv6 Reality 域名` 及各自回落网站
+- 输入：`IPv4 Reality 域名 / IPv6 Reality 域名`
+- 回落：每个新增 Reality 域名单独配置
 
 #### VLESS+WS+TLS+CDN | Hysteria2 直连
 
@@ -170,8 +174,8 @@ curl -fsSL https://github.com/Yulinanami/my-xhttp-cdn-config/releases/latest/dow
 bash ~/add-common-nodes.sh
 ```
 
-- 复用：主脚本的 `CDN 域名 / Reality 域名 / UUID / 证书`
-- 输入：`WebSocket 路径 / Hysteria2 密码 / 伪装网站`
+- 复用：主脚本的 `CDN 域名 / Reality 域名 / UUID / 证书 / 回落方式`
+- 输入：`WebSocket 路径 / Hysteria2 密码`
 - 端口：VLESS 使用 TCP 443；Hysteria2 使用 UDP 443，需在防火墙与安全组放行
 
 ---

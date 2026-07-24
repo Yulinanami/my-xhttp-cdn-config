@@ -73,17 +73,7 @@ http {
         }
 
         location / {
-            proxy_pass ${REALITY_FALLBACK_ORIGIN};
-            proxy_ssl_server_name on;
-            proxy_ssl_name ${REALITY_FALLBACK_HOST};
-            proxy_redirect ${REALITY_FALLBACK_ORIGIN}/ https://\$host/;
-            proxy_redirect http://${REALITY_FALLBACK_HOST}/ https://\$host/;
-            proxy_redirect https://${REALITY_FALLBACK_HOST}/ https://\$host/;
-            proxy_set_header Host ${REALITY_FALLBACK_HOST};
-            proxy_set_header X-Real-IP \$remote_addr;
-            proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-            proxy_set_header X-Forwarded-Proto \$scheme;
-            proxy_set_header X-Forwarded-Host \$host;
+$(nginx_fallback_config "$REALITY_DOMAIN" "$REALITY_FALLBACK_ORIGIN" "$REALITY_FALLBACK_HOST")
         }
     }
 
@@ -96,17 +86,7 @@ http {
         ssl_certificate_key /etc/ssl/private/private.key;
 
         location / {
-            proxy_pass ${CDN_FALLBACK_ORIGIN};
-            proxy_ssl_server_name on;
-            proxy_ssl_name ${CDN_FALLBACK_HOST};
-            proxy_redirect ${CDN_FALLBACK_ORIGIN}/ https://\$host/;
-            proxy_redirect http://${CDN_FALLBACK_HOST}/ https://\$host/;
-            proxy_redirect https://${CDN_FALLBACK_HOST}/ https://\$host/;
-            proxy_set_header Host ${CDN_FALLBACK_HOST};
-            proxy_set_header X-Real-IP \$remote_addr;
-            proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-            proxy_set_header X-Forwarded-Proto \$scheme;
-            proxy_set_header X-Forwarded-Host \$host;
+$(nginx_fallback_config "$CDN_DOMAIN" "$CDN_FALLBACK_ORIGIN" "$CDN_FALLBACK_HOST")
         }
 
         location ${XHTTP_PATH} {

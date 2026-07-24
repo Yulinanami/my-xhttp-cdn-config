@@ -37,59 +37,87 @@ VPS_SERVER=$(extract_uri_server "$REALITY_LINE")
 [[ -n "$REALITY_DOMAIN" ]] || error "读取 Reality 域名失败"
 [[ -n "$VPS_SERVER" ]] || error "读取 VPS 地址失败"
 
+[[ -f /etc/xhttp-cdn/fallback.env ]] || error "未找到主脚本回落配置，请重新运行主脚本"
+# shellcheck disable=SC1090
+. /etc/xhttp-cdn/fallback.env
+
+[[ "$FALLBACK_MODE" == "proxy" || "$FALLBACK_MODE" == "static" ]] || error "主脚本回落方式无效，请重新运行主脚本"
+
 read -rp "请输入 CDN-A 域名（上行，默认 ${DEFAULT_CDN_DOMAIN}）: " CDN_A
 CDN_A=${CDN_A:-$DEFAULT_CDN_DOMAIN}
 [[ -z "$CDN_A" ]] && error "CDN-A 域名不能为空"
+[[ "$CDN_A" =~ ^[A-Za-z0-9.-]+$ && "$CDN_A" != "." && "$CDN_A" != ".." ]] || error "CDN-A 域名格式无效"
+[[ "$CDN_A" != "$REALITY_DOMAIN" ]] || error "CDN-A 域名不能与 Reality 域名相同"
 
 read -rp "请输入 CDN-B 域名（下行 CDN，如 cdn-b.example.com）: " CDN_B
 [[ -z "$CDN_B" ]] && error "CDN-B 域名不能为空"
+[[ "$CDN_B" =~ ^[A-Za-z0-9.-]+$ && "$CDN_B" != "." && "$CDN_B" != ".." ]] || error "CDN-B 域名格式无效"
+[[ "$CDN_B" != "$REALITY_DOMAIN" ]] || error "CDN-B 域名不能与 Reality 域名相同"
 if [[ "$CDN_B" == "$CDN_A" ]]; then
   warn "CDN-A 与 CDN-B 相同，将按同一域名处理"
 fi
 
-echo ""
-echo -e "${YELLOW}[+] CDN-A / CDN-B 回落网站${NC}"
-read -rp "请输入 CDN-A 回落网站 [默认 https://www.stanford.edu]: " CDN_A_FALLBACK_URL
-CDN_A_FALLBACK_URL=${CDN_A_FALLBACK_URL:-https://www.stanford.edu}
-read -rp "请输入 CDN-B 回落网站 [默认 https://www.harvard.edu]: " CDN_B_FALLBACK_URL
-CDN_B_FALLBACK_URL=${CDN_B_FALLBACK_URL:-https://www.harvard.edu}
+if [[ "$FALLBACK_MODE" == "proxy" ]]; then
+  [[ -n "$CDN_FALLBACK_ORIGIN" && -n "$CDN_FALLBACK_HOST" ]] || error "主脚本 CDN 回落网站为空，请重新运行主脚本"
 
-normalize_proxy_origin() {
-  local url="$1"
-  local scheme rest host
+  if [[ "$CDN_A" == "$DEFAULT_CDN_DOMAIN" ]]; then
+    CDN_A_FALLBACK_ORIGIN="$CDN_FALLBACK_ORIGIN"
+    CDN_A_FALLBACK_HOST="$CDN_FALLBACK_HOST"
+  else
+    read -rp "请输入 ${CDN_A} 的回落网站: " CDN_A_FALLBACK_ORIGIN
+    CDN_A_FALLBACK_ORIGIN=$(normalize_proxy_origin "$CDN_A_FALLBACK_ORIGIN") || error "CDN-A 回落网站格式无效"
+    CDN_A_FALLBACK_HOST=$(extract_host_from_url "$CDN_A_FALLBACK_ORIGIN")
+    [[ "$CDN_A_FALLBACK_ORIGIN" != "$REALITY_FALLBACK_ORIGIN" && "$CDN_A_FALLBACK_ORIGIN" != "$CDN_FALLBACK_ORIGIN" ]] || error "不同入口域名不能共用回落网站"
+  fi
 
-  [[ "$url" =~ ^https?:// ]] || url="https://${url}"
-  scheme="${url%%://*}"
-  rest="${url#*://}"
-  host="${rest%%/*}"
-  host="${host%%\?*}"
-  host="${host%%\#*}"
+  if [[ "$CDN_B" == "$CDN_A" ]]; then
+    CDN_B_FALLBACK_ORIGIN="$CDN_A_FALLBACK_ORIGIN"
+    CDN_B_FALLBACK_HOST="$CDN_A_FALLBACK_HOST"
+  elif [[ "$CDN_B" == "$DEFAULT_CDN_DOMAIN" ]]; then
+    CDN_B_FALLBACK_ORIGIN="$CDN_FALLBACK_ORIGIN"
+    CDN_B_FALLBACK_HOST="$CDN_FALLBACK_HOST"
+  else
+    read -rp "请输入 ${CDN_B} 的回落网站: " CDN_B_FALLBACK_ORIGIN
+    CDN_B_FALLBACK_ORIGIN=$(normalize_proxy_origin "$CDN_B_FALLBACK_ORIGIN") || error "CDN-B 回落网站格式无效"
+    CDN_B_FALLBACK_HOST=$(extract_host_from_url "$CDN_B_FALLBACK_ORIGIN")
+    [[ "$CDN_B_FALLBACK_ORIGIN" != "$REALITY_FALLBACK_ORIGIN" && "$CDN_B_FALLBACK_ORIGIN" != "$CDN_FALLBACK_ORIGIN" ]] || error "不同入口域名不能共用回落网站"
+    [[ "$CDN_B_FALLBACK_ORIGIN" != "$CDN_A_FALLBACK_ORIGIN" ]] || error "CDN-A 和 CDN-B 不能共用回落网站"
+  fi
+else
+  prepare_static_site() {
+    local domain="$1"
+    mkdir -p "${STATIC_SITE_DIR}/${domain}"
+    if [[ ! -f "${STATIC_SITE_DIR}/${domain}/index.html" ]]; then
+      cat > "${STATIC_SITE_DIR}/${domain}/index.html" <<'INITIAL_HTML_EOF'
+@@include templates/default-index.html.tmpl
+INITIAL_HTML_EOF
+      sed -i \
+        -e "s|<title>欢迎</title>|<title>${domain}</title>|" \
+        -e "s|<h1>欢迎访问</h1>|<h1>${domain}</h1>|" \
+        "${STATIC_SITE_DIR}/${domain}/index.html"
+      chmod 644 "${STATIC_SITE_DIR}/${domain}/index.html"
+    fi
+    chown "$(stat -c '%u:%g' "$USER_HOME")" \
+      "${STATIC_SITE_DIR}/${domain}" \
+      "${STATIC_SITE_DIR}/${domain}/index.html"
+  }
 
-  [[ -n "$host" ]] || return 1
-  printf '%s://%s' "$scheme" "$host"
-}
-
-extract_host_from_url() {
-  local url="$1"
-  url="${url#*://}"
-  url="${url%%/*}"
-  printf '%s' "$url"
-}
-
-CDN_A_FALLBACK_ORIGIN=$(normalize_proxy_origin "$CDN_A_FALLBACK_URL") || error "CDN-A 回落网站格式无效"
-CDN_B_FALLBACK_ORIGIN=$(normalize_proxy_origin "$CDN_B_FALLBACK_URL") || error "CDN-B 回落网站格式无效"
-CDN_A_FALLBACK_HOST=$(extract_host_from_url "$CDN_A_FALLBACK_ORIGIN")
-CDN_B_FALLBACK_HOST=$(extract_host_from_url "$CDN_B_FALLBACK_ORIGIN")
-
-if [[ "$CDN_A_FALLBACK_ORIGIN" == "$CDN_B_FALLBACK_ORIGIN" ]]; then
-  warn "CDN-A / CDN-B 回落网站相同，建议分别设置不同伪装站"
+  prepare_static_site "$CDN_A"
+  [[ "$CDN_B" == "$CDN_A" ]] || prepare_static_site "$CDN_B"
+  echo "CDN-A 页面：${STATIC_SITE_DIR}/${CDN_A}/index.html"
+  echo "CDN-B 页面：${STATIC_SITE_DIR}/${CDN_B}/index.html"
+  read -rp "确认各域名页面准备完成后按 Enter 继续: "
+  [[ -f "${STATIC_SITE_DIR}/${CDN_A}/index.html" ]] || error "未找到 CDN-A 页面"
+  [[ -f "${STATIC_SITE_DIR}/${CDN_B}/index.html" ]] || error "未找到 CDN-B 页面"
 fi
 
 info "Reality 域名: $REALITY_DOMAIN"
 info "原 CDN 域名:  $DEFAULT_CDN_DOMAIN"
 info "CDN-A 域名:   $CDN_A"
 info "CDN-B 域名:   $CDN_B"
-info "CDN-A 回落:    $CDN_A_FALLBACK_ORIGIN"
-info "CDN-B 回落:    $CDN_B_FALLBACK_ORIGIN"
+if [[ "$FALLBACK_MODE" == "proxy" ]]; then
+  info "CDN-A 回落:   $CDN_A_FALLBACK_ORIGIN"
+  info "CDN-B 回落:   $CDN_B_FALLBACK_ORIGIN"
+fi
 info "XHTTP Path:   $XHTTP_PATH"
 echo ""

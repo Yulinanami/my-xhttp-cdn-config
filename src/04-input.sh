@@ -26,9 +26,12 @@ echo ""
 
 read -rp "请输入 Reality 域名 (如 reality.example.com): " REALITY_DOMAIN
 [[ -z "$REALITY_DOMAIN" ]] && error "域名不能为空"
+[[ "$REALITY_DOMAIN" =~ ^[A-Za-z0-9.-]+$ && "$REALITY_DOMAIN" != "." && "$REALITY_DOMAIN" != ".." ]] || error "Reality 域名格式无效"
 
 read -rp "请输入 CDN 域名 (如 cdn.example.com): " CDN_DOMAIN
 [[ -z "$CDN_DOMAIN" ]] && error "域名不能为空"
+[[ "$CDN_DOMAIN" =~ ^[A-Za-z0-9.-]+$ && "$CDN_DOMAIN" != "." && "$CDN_DOMAIN" != ".." ]] || error "CDN 域名格式无效"
+[[ "$REALITY_DOMAIN" != "$CDN_DOMAIN" ]] || error "Reality 域名和 CDN 域名不能相同"
 
 echo ""
 echo "  1) IPv4"
@@ -37,11 +40,51 @@ read -rp "请选择 IP 类型 [1/2] (默认 1): " IP_CHOICE
 IP_CHOICE=${IP_CHOICE:-1}
 
 echo ""
-echo -e "${YELLOW}[+] 主动探测回落网站（建议用 VPS 所在地区选择当地大学官网，伪装能力更好）${NC}"
-read -rp "请输入 Reality 域名回落网站 [默认 https://www.stanford.edu]: " REALITY_FALLBACK_URL
-REALITY_FALLBACK_URL=${REALITY_FALLBACK_URL:-https://www.stanford.edu}
-read -rp "请输入 CDN 域名回落网站 [默认 https://www.harvard.edu]: " CDN_FALLBACK_URL
-CDN_FALLBACK_URL=${CDN_FALLBACK_URL:-https://www.harvard.edu}
+echo -e "${YELLOW}[+] 主动探测回落方式${NC}"
+echo "  1) Nginx 反向代理网站（默认）"
+echo "  2) 使用自己的静态页面"
+read -rp "请选择回落方式 [1/2] (默认 1): " FALLBACK_CHOICE
+
+case "${FALLBACK_CHOICE:-1}" in
+  1)
+    FALLBACK_MODE="proxy"
+    read -rp "请输入 Reality 域名回落网站 [默认 https://www.stanford.edu]: " REALITY_FALLBACK_URL
+    REALITY_FALLBACK_URL=${REALITY_FALLBACK_URL:-https://www.stanford.edu}
+    read -rp "请输入 CDN 域名回落网站 [默认 https://www.harvard.edu]: " CDN_FALLBACK_URL
+    CDN_FALLBACK_URL=${CDN_FALLBACK_URL:-https://www.harvard.edu}
+    ;;
+  2)
+    FALLBACK_MODE="static"
+    STATIC_SITE_DIR="${USER_HOME}/dist"
+    for STATIC_DOMAIN in "$REALITY_DOMAIN" "$CDN_DOMAIN"; do
+      mkdir -p "${STATIC_SITE_DIR}/${STATIC_DOMAIN}"
+      if [[ ! -f "${STATIC_SITE_DIR}/${STATIC_DOMAIN}/index.html" ]]; then
+        cat > "${STATIC_SITE_DIR}/${STATIC_DOMAIN}/index.html" <<'INITIAL_HTML_EOF'
+@@include templates/default-index.html.tmpl
+INITIAL_HTML_EOF
+        sed -i \
+          -e "s|<title>欢迎</title>|<title>${STATIC_DOMAIN}</title>|" \
+          -e "s|<h1>欢迎访问</h1>|<h1>${STATIC_DOMAIN}</h1>|" \
+          "${STATIC_SITE_DIR}/${STATIC_DOMAIN}/index.html"
+        chmod 644 "${STATIC_SITE_DIR}/${STATIC_DOMAIN}/index.html"
+        info "已生成初始静态页面：${STATIC_SITE_DIR}/${STATIC_DOMAIN}/index.html"
+      fi
+      chown "$(stat -c '%u:%g' "$USER_HOME")" \
+        "${STATIC_SITE_DIR}/${STATIC_DOMAIN}" \
+        "${STATIC_SITE_DIR}/${STATIC_DOMAIN}/index.html"
+    done
+    echo ""
+    echo "Reality 页面：${STATIC_SITE_DIR}/${REALITY_DOMAIN}/index.html"
+    echo "CDN 页面：    ${STATIC_SITE_DIR}/${CDN_DOMAIN}/index.html"
+    echo "可用 SingleFile 抓取网页后分别上传。"
+    read -rp "确认两个域名的页面准备完成后按 Enter 继续: "
+    [[ -f "${STATIC_SITE_DIR}/${REALITY_DOMAIN}/index.html" ]] || error "未找到 Reality 域名页面"
+    [[ -f "${STATIC_SITE_DIR}/${CDN_DOMAIN}/index.html" ]] || error "未找到 CDN 域名页面"
+    ;;
+  *)
+    error "回落方式只能选择 1 或 2"
+    ;;
+esac
 
 if [[ "$FEATURE_XPADDING" == true ]]; then
   echo ""
@@ -69,43 +112,41 @@ fi
 
 normalize_proxy_origin() {
   local url="$1"
-  local scheme rest host
 
   [[ "$url" =~ ^https?:// ]] || url="https://${url}"
-  scheme="${url%%://*}"
-  rest="${url#*://}"
-  host="${rest%%/*}"
-  host="${host%%\?*}"
-  host="${host%%\#*}"
-
-  [[ -n "$host" ]] || return 1
-  echo "${scheme}://${host}"
+  [[ "$url" =~ ^(https?)://([^/?#]+) ]] || return 1
+  printf '%s://%s' "${BASH_REMATCH[1]}" "${BASH_REMATCH[2]}"
 }
 
 extract_host_from_url() {
-  local url="$1"
-  url="${url#*://}"
-  url="${url%%/*}"
-  echo "$url"
+  printf '%s' "${1#*://}"
 }
 
-REALITY_FALLBACK_ORIGIN=$(normalize_proxy_origin "$REALITY_FALLBACK_URL") || error "Reality 回落网站格式无效"
-CDN_FALLBACK_ORIGIN=$(normalize_proxy_origin "$CDN_FALLBACK_URL") || error "CDN 回落网站格式无效"
-REALITY_FALLBACK_HOST=$(extract_host_from_url "$REALITY_FALLBACK_ORIGIN")
-CDN_FALLBACK_HOST=$(extract_host_from_url "$CDN_FALLBACK_ORIGIN")
+if [[ "$FALLBACK_MODE" == "proxy" ]]; then
+  REALITY_FALLBACK_ORIGIN=$(normalize_proxy_origin "$REALITY_FALLBACK_URL") || error "Reality 回落网站格式无效"
+  CDN_FALLBACK_ORIGIN=$(normalize_proxy_origin "$CDN_FALLBACK_URL") || error "CDN 回落网站格式无效"
+  REALITY_FALLBACK_HOST=$(extract_host_from_url "$REALITY_FALLBACK_ORIGIN")
+  CDN_FALLBACK_HOST=$(extract_host_from_url "$CDN_FALLBACK_ORIGIN")
+  [[ "$REALITY_FALLBACK_ORIGIN" != "$CDN_FALLBACK_ORIGIN" ]] || error "Reality 域名和 CDN 域名不能共用同一个回落网站"
 
-if [[ "$REALITY_FALLBACK_URL" != "$REALITY_FALLBACK_ORIGIN" ]]; then
-  warn "Reality 回落网站已忽略路径部分，实际反代目标: $REALITY_FALLBACK_ORIGIN"
-fi
-if [[ "$CDN_FALLBACK_URL" != "$CDN_FALLBACK_ORIGIN" ]]; then
-  warn "CDN 回落网站已忽略路径部分，实际反代目标: $CDN_FALLBACK_ORIGIN"
+  if [[ "$REALITY_FALLBACK_URL" != "$REALITY_FALLBACK_ORIGIN" ]]; then
+    warn "Reality 回落网站已忽略路径部分，实际反代目标: $REALITY_FALLBACK_ORIGIN"
+  fi
+  if [[ "$CDN_FALLBACK_URL" != "$CDN_FALLBACK_ORIGIN" ]]; then
+    warn "CDN 回落网站已忽略路径部分，实际反代目标: $CDN_FALLBACK_ORIGIN"
+  fi
 fi
 
 echo ""
 info "Reality: $REALITY_DOMAIN"
 info "CDN:     $CDN_DOMAIN"
-info "Reality 回落网站: $REALITY_FALLBACK_ORIGIN"
-info "CDN 回落网站:     $CDN_FALLBACK_ORIGIN"
+if [[ "$FALLBACK_MODE" == "static" ]]; then
+  info "回落方式: 本地静态页面"
+else
+  info "回落方式: Nginx 反向代理"
+  info "Reality 回落网站: $REALITY_FALLBACK_ORIGIN"
+  info "CDN 回落网站:     $CDN_FALLBACK_ORIGIN"
+fi
 if [[ "$FEATURE_XPADDING" == true ]]; then
   info "xpadding Header:   $XHTTP_PADDING_HEADER"
   info "xpadding Key:      $XHTTP_PADDING_KEY"

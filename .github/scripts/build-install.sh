@@ -19,22 +19,15 @@ MODULES=(
 )
 
 append_with_includes() {
-  local file="$1"
-  local line include_path
+  local line
 
   while IFS= read -r line || [[ -n "$line" ]]; do
     if [[ "$line" == @@include\ * ]]; then
-      include_path="${line#@@include }"
-      append_with_includes "$ROOT_DIR/$include_path"
+      append_with_includes "$ROOT_DIR/${line#@@include }"
     else
       printf '%s\n' "$line"
     fi
-  done < "$file"
-}
-
-append_module() {
-  local file="$1"
-  append_with_includes "$file"
+  done < "$1"
 }
 
 append_profile() {
@@ -82,7 +75,7 @@ set -e
 SCRIPTHEADER
 
   for module in "${MODULES[@]}"; do
-    append_module "$ROOT_DIR/src/$module" >> "$tmp"
+    append_with_includes "$ROOT_DIR/src/$module" >> "$tmp"
     if [[ "$module" == "01-env.sh" ]]; then
       append_profile "$variant" >> "$tmp"
     fi

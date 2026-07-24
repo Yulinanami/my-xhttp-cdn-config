@@ -118,6 +118,18 @@ extract_uri_server() {
   printf '%s' "${hostport%:443}"
 }
 
+normalize_proxy_origin() {
+  local url="$1"
+
+  [[ "$url" =~ ^https?:// ]] || url="https://${url}"
+  [[ "$url" =~ ^(https?)://([^/?#]+) ]] || return 1
+  printf '%s://%s' "${BASH_REMATCH[1]}" "${BASH_REMATCH[2]}"
+}
+
+extract_host_from_url() {
+  printf '%s' "${1#*://}"
+}
+
 add_candidate_home() {
   local dir="$1"
   [[ -n "$dir" && -d "$dir" ]] || return 0

@@ -119,10 +119,19 @@ append_cdn_block() {
         ssl_certificate_key /etc/ssl/private/private.key;
 
         location / {
+EOF
+
+  if [[ "$FALLBACK_MODE" == "static" ]]; then
+    cat <<EOF
+            root ${STATIC_SITE_DIR}/${domain};
+            index index.html;
+            try_files \$uri \$uri/ /index.html;
+EOF
+  else
+    cat <<EOF
             proxy_pass ${fallback_origin};
             proxy_ssl_server_name on;
             proxy_ssl_name ${fallback_host};
-            proxy_redirect ${fallback_origin}/ https://\$host/;
             proxy_redirect http://${fallback_host}/ https://\$host/;
             proxy_redirect https://${fallback_host}/ https://\$host/;
             proxy_set_header Host ${fallback_host};
@@ -130,6 +139,10 @@ append_cdn_block() {
             proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
             proxy_set_header X-Forwarded-Proto \$scheme;
             proxy_set_header X-Forwarded-Host \$host;
+EOF
+  fi
+
+  cat <<EOF
         }
 
         location ${XHTTP_PATH} {
@@ -235,10 +248,10 @@ if [[ "$CDN_A" == "$CDN_B" && "$CDN_A" != "$DEFAULT_CDN_DOMAIN" ]]; then
 fi
 
 if [[ "$CDN_A" == "$DEFAULT_CDN_DOMAIN" ]]; then
-  warn "CDN-A 与原 CDN 域名相同，将复用主脚本写入的 server block，CDN-A 回落网站设置不会生效"
+  warn "CDN-A 与原 CDN 域名相同，将复用主脚本写入的 server block"
 fi
 if [[ "$CDN_B" == "$DEFAULT_CDN_DOMAIN" ]]; then
-  warn "CDN-B 与原 CDN 域名相同，将复用主脚本写入的 server block，CDN-B 回落网站设置不会生效"
+  warn "CDN-B 与原 CDN 域名相同，将复用主脚本写入的 server block"
 fi
 
 sed -i '$d' "$tmp_nginx"

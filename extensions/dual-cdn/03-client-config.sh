@@ -110,6 +110,8 @@ EOF
       }
     }
   ' "$source_file" > "$tmp_mihomo"
+  chown "$(stat -c '%u:%g' "$USER_HOME")" "$tmp_mihomo"
+  chmod 644 "$tmp_mihomo"
   mv "$tmp_mihomo" "$source_file"
 
   rm -f "$base_node_file" "$new_node_file"

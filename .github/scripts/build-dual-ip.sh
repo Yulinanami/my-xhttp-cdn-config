@@ -11,6 +11,18 @@ MODULES=(
   extensions/dual-ip/04-subscription-output.sh
 )
 
+append_with_includes() {
+  local line
+
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    if [[ "$line" == @@include\ * ]]; then
+      append_with_includes "$ROOT_DIR/${line#@@include }"
+    else
+      printf '%s\n' "$line"
+    fi
+  done < "$1"
+}
+
 build_one() {
   local output="$1"
   local tmp module
@@ -22,7 +34,7 @@ set -e
 SCRIPTHEADER
 
   for module in "${MODULES[@]}"; do
-    cat "$ROOT_DIR/$module" >> "$tmp"
+    append_with_includes "$ROOT_DIR/$module" >> "$tmp"
     printf '\n' >> "$tmp"
   done
 

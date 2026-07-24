@@ -6,8 +6,15 @@ echo -e "\n${CYAN}[+] 部署完成${NC}\n"
 echo -e "${YELLOW}[+] 服务端参数${NC}"
 echo "Reality 域名:   $REALITY_DOMAIN"
 echo "CDN 域名:       $CDN_DOMAIN"
-echo "Reality 回落网站: $REALITY_FALLBACK_ORIGIN"
-echo "CDN 回落网站:    $CDN_FALLBACK_ORIGIN"
+if [[ "$FALLBACK_MODE" == "static" ]]; then
+  echo "回落方式:       本地静态页面"
+  echo "Reality 页面:   ${STATIC_SITE_DIR}/${REALITY_DOMAIN}"
+  echo "CDN 页面:       ${STATIC_SITE_DIR}/${CDN_DOMAIN}"
+else
+  echo "回落方式:       Nginx 反向代理"
+  echo "Reality 回落网站: $REALITY_FALLBACK_ORIGIN"
+  echo "CDN 回落网站:    $CDN_FALLBACK_ORIGIN"
+fi
 echo "VPS IP:         $VPS_IP"
 echo "UUID1 (Vision): $UUID1"
 echo "UUID2 (XHTTP):  $UUID2"

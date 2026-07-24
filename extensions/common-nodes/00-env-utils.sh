@@ -66,21 +66,6 @@ rawurlencode() {
   printf '%s' "$encoded"
 }
 
-normalize_proxy_origin() {
-  local url="$1"
-  local scheme rest host
-
-  [[ "$url" =~ ^https?:// ]] || url="https://${url}"
-  scheme="${url%%://*}"
-  rest="${url#*://}"
-  host="${rest%%/*}"
-  host="${host%%\?*}"
-  host="${host%%\#*}"
-
-  [[ -n "$host" ]] || return 1
-  printf '%s://%s' "$scheme" "$host"
-}
-
 get_query_param() {
   local line="$1"
   local key="$2"

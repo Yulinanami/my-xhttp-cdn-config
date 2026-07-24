@@ -192,13 +192,24 @@ tls:
 auth:
   type: password
   password: ${HY2_PASSWORD}
+EOF
 
+if [[ "$FALLBACK_MODE" == "static" ]]; then
+  cat >> "$HYSTERIA_CONF" <<EOF
+masquerade:
+  type: file
+  file:
+    dir: ${STATIC_SITE_DIR}/${REALITY_DOMAIN}
+EOF
+else
+  cat >> "$HYSTERIA_CONF" <<EOF
 masquerade:
   type: proxy
   proxy:
-    url: ${HY2_MASQ_ORIGIN}
+    url: ${REALITY_FALLBACK_ORIGIN}
     rewriteHost: true
 EOF
+fi
 chmod 600 "$HYSTERIA_CONF"
 info "已写入 hysteria2 配置: $HYSTERIA_CONF"
 
@@ -254,7 +265,6 @@ install -d -m 700 "$COMMON_STATE_DIR"
 cat > "$COMMON_STATE_FILE" <<EOF
 WS_PATH=${WS_PATH}
 HY2_PASSWORD=${HY2_PASSWORD}
-HY2_MASQ=${HY2_MASQ_ORIGIN}
 EOF
 chmod 600 "$COMMON_STATE_FILE"
 

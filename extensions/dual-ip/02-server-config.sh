@@ -127,10 +127,19 @@ append_reality_block() {
         }
 
         location / {
+EOF
+
+  if [[ "$FALLBACK_MODE" == "static" ]]; then
+    cat <<EOF
+            root ${STATIC_SITE_DIR}/${domain};
+            index index.html;
+            try_files \$uri \$uri/ /index.html;
+EOF
+  else
+    cat <<EOF
             proxy_pass ${fallback_origin};
             proxy_ssl_server_name on;
             proxy_ssl_name ${fallback_host};
-            proxy_redirect ${fallback_origin}/ https://\$host/;
             proxy_redirect http://${fallback_host}/ https://\$host/;
             proxy_redirect https://${fallback_host}/ https://\$host/;
             proxy_set_header Host ${fallback_host};
@@ -138,6 +147,10 @@ append_reality_block() {
             proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
             proxy_set_header X-Forwarded-Proto \$scheme;
             proxy_set_header X-Forwarded-Host \$host;
+EOF
+  fi
+
+  cat <<EOF
         }
     }
 EOF
