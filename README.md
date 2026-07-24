@@ -46,8 +46,9 @@
 5. [拓展-上下行不同CDN.md](./docs/6.拓展-上下行不同CDN.md)，可选扩展：上行 CDN-A / 下行 CDN-B。
 6. [拓展-上下行IPv4IPv6.md](./docs/7.拓展-上下行IPv4IPv6.md)，可选扩展：上行 IPv4 / 下行 IPv6。
 7. [拓展-常用节点.md](./docs/8.拓展-常用节点.md)，可选扩展：VLESS+WS+TLS+CDN / Hysteria2 直连。
-8. [客户端模板.txt](./客户端模板.txt)，复制到 V2rayN，替换 `YOUR_*` 占位符后使用。
-9. [客户端模板-mihomo.yaml](./客户端模板-mihomo.yaml)，Mihomo内核客户端的配置文件，替换 `YOUR_*` 占位符后导入。
+8. [卸载.md](./docs/9.卸载.md)，卸载指令，用于卸载前面搭建 Xray、Nginx、ACME 和 Hysteria2。
+9. [客户端模板.txt](./客户端模板.txt)，复制到 V2rayN，替换 `YOUR_*` 占位符后使用。
+10. [客户端模板-mihomo.yaml](./客户端模板-mihomo.yaml)，Mihomo内核客户端的配置文件，替换 `YOUR_*` 占位符后导入。
 
 ---
 
