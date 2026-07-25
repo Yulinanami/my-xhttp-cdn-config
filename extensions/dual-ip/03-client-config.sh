@@ -39,11 +39,12 @@ LINE_V6_UP="vless://${UUID2}@${IPV6_URI}:443?encryption=${VLESSENC_ENCRYPTION}&s
 sed -i "/#${NODE_V4_UP_TAG}\$/d" "$V2RAYN_FILE"
 sed -i "/#${NODE_V6_UP_TAG}\$/d" "$V2RAYN_FILE"
 printf '%s\n%s\n' "$LINE_V4_UP" "$LINE_V6_UP" >> "$V2RAYN_FILE"
+chown "$(stat -c '%u:%g' "$USER_HOME")" "$V2RAYN_FILE"
 
 build_download_settings_block() {
   local download_ip="$1"
   local download_domain="$2"
-  local base_node_file="$3"
+  local source_file="$3"
 
   cat <<EOF
       download-settings:
@@ -57,7 +58,11 @@ build_download_settings_block() {
         client-fingerprint: chrome
 EOF
 
-  awk '/^      x-padding-/ { sub(/^      /, "        "); print }' "$base_node_file"
+  awk '
+    /^  - name: xhttp\+Reality 上下行不分离/ { in_node=1; next }
+    in_node && (/^  - name: / || /^proxy-groups:/) { exit }
+    in_node && /^      x-padding-/ { sub(/^      /, "        "); print }
+  ' "$source_file"
 
   cat <<EOF
         reality-opts:
@@ -69,8 +74,14 @@ EOF
           h-max-reusable-secs: "1800-3000"
 EOF
 
-  grep -q 'h-keep-alive-period:' "$base_node_file" && \
-    echo "          h-keep-alive-period: 0"
+  awk '
+    /^  - name: xhttp\+Reality 上下行不分离/ { in_node=1; next }
+    in_node && (/^  - name: / || /^proxy-groups:/) { exit }
+    in_node && /h-keep-alive-period:/ {
+      print "          h-keep-alive-period: 0"
+      exit
+    }
+  ' "$source_file"
 }
 
 build_mihomo_node_block() {
@@ -80,42 +91,46 @@ build_mihomo_node_block() {
   local upload_domain="$4"
   local download_domain="$5"
   local source_file="$6"
-  local base_node_file new_node_file
 
-  base_node_file=$(mktemp)
-  awk '
-    /^  - name: xhttp\+Reality 上下行不分离/ { in_node=1; print; next }
-    in_node && (/^  - name: / || /^proxy-groups:/) { exit }
-    in_node { print }
-  ' "$source_file" > "$base_node_file"
-  [[ -s "$base_node_file" ]] || error "未找到 Mihomo 的 xhttp+Reality 上下行不分离节点: $source_file"
-
-  new_node_file=$(mktemp)
   awk -v node_name="$node_name" -v upload_ip="$upload_ip" -v upload_domain="$upload_domain" '
-    /^  - name: xhttp\+Reality 上下行不分离/ { print "  - name: " node_name; next }
+    /^  - name: xhttp\+Reality 上下行不分离/ {
+      in_node=1
+      print "  - name: " node_name
+      next
+    }
+    in_node && (/^  - name: / || /^proxy-groups:/) { exit }
+    !in_node { next }
     /^    server:/ { print "    server: " upload_ip; next }
     /^    servername:/ { print "    servername: " upload_domain; next }
     { print }
-  ' "$base_node_file" > "$new_node_file"
+  ' "$source_file"
 
-  build_download_settings_block "$download_ip" "$download_domain" "$base_node_file" >> "$new_node_file"
-  rm -f "$base_node_file"
-
-  printf '%s' "$new_node_file"
+  build_download_settings_block "$download_ip" "$download_domain" "$source_file"
 }
 
-append_mihomo_node() {
+update_mihomo_file() {
   local source_file="$1"
-  local node_file="$2"
-  local node_name="$3"
-  local tmp_mihomo
+  local node_file tmp_file
 
-  tmp_mihomo=$(mktemp)
-  awk -v node_name="$node_name" -v node_file="$node_file" '
-    $0 == "  - name: " node_name      { skip=1; next }
-    skip && /^  - name: /             { skip=0 }
-    skip && /^proxy-groups:/          { skip=0 }
-    skip                              { next }
+  grep -q '^  - name: xhttp+Reality 上下行不分离' "$source_file" ||
+    error "未找到 Mihomo 的 xhttp+Reality 上下行不分离节点: $source_file"
+
+  node_file=$(mktemp)
+  tmp_file=$(mktemp)
+  {
+    build_mihomo_node_block "$NODE_V4_UP_NAME" "$IPV4_ADDRESS" "$IPV6_ADDRESS" "$REALITY_DOMAIN_V4" "$REALITY_DOMAIN_V6" "$source_file"
+    echo ""
+    build_mihomo_node_block "$NODE_V6_UP_NAME" "$IPV6_ADDRESS" "$IPV4_ADDRESS" "$REALITY_DOMAIN_V6" "$REALITY_DOMAIN_V4" "$source_file"
+  } > "$node_file"
+
+  awk -v v4_name="$NODE_V4_UP_NAME" -v v6_name="$NODE_V6_UP_NAME" -v node_file="$node_file" '
+    skip && !(/^  - name: / || /^proxy-groups:/) { next }
+    skip { skip=0 }
+
+    $0 == "  - name: " v4_name || $0 == "  - name: " v6_name {
+      skip=1
+      next
+    }
 
     /^proxy-groups:/ {
       while ((getline line < node_file) > 0) print line
@@ -133,16 +148,13 @@ append_mihomo_node() {
         while ((getline line < node_file) > 0) print line
       }
     }
-  ' "$source_file" > "$tmp_mihomo"
-  chown "$(stat -c '%u:%g' "$USER_HOME")" "$tmp_mihomo"
-  chmod 644 "$tmp_mihomo"
-  mv "$tmp_mihomo" "$source_file"
+  ' "$source_file" > "$tmp_file"
+
+  cat "$tmp_file" > "$source_file"
+  rm -f "$node_file" "$tmp_file"
 }
 
-for MIHOMO_TARGET_FILE in "${MIHOMO_TARGET_FILES[@]}"; do
-  NODE_V4_UP_FILE=$(build_mihomo_node_block "$NODE_V4_UP_NAME" "$IPV4_ADDRESS" "$IPV6_ADDRESS" "$REALITY_DOMAIN_V4" "$REALITY_DOMAIN_V6" "$MIHOMO_TARGET_FILE")
-  NODE_V6_UP_FILE=$(build_mihomo_node_block "$NODE_V6_UP_NAME" "$IPV6_ADDRESS" "$IPV4_ADDRESS" "$REALITY_DOMAIN_V6" "$REALITY_DOMAIN_V4" "$MIHOMO_TARGET_FILE")
-  append_mihomo_node "$MIHOMO_TARGET_FILE" "$NODE_V4_UP_FILE" "$NODE_V4_UP_NAME"
-  append_mihomo_node "$MIHOMO_TARGET_FILE" "$NODE_V6_UP_FILE" "$NODE_V6_UP_NAME"
-  rm -f "$NODE_V4_UP_FILE" "$NODE_V6_UP_FILE"
+for target_file in "$MIHOMO_FULL_FILE" "$MIHOMO_NODES_FILE"; do
+  update_mihomo_file "$target_file"
 done
+chown "$(stat -c '%u:%g' "$USER_HOME")" "$MIHOMO_FULL_FILE" "$MIHOMO_NODES_FILE"

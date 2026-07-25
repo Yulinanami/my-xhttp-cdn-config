@@ -2,182 +2,83 @@
 # 订阅文件与二维码输出
 # ==================================================
 
-SUB_CONF_DIR="/etc/xhttp-cdn"
-SUB_TOKEN_FILE="${SUB_CONF_DIR}/sub_token"
-install -d -m 700 "$SUB_CONF_DIR"
-
-if [[ -f "$SUB_TOKEN_FILE" ]]; then
-  SUB_TOKEN=$(tr -d '\r\n' < "$SUB_TOKEN_FILE")
-else
-  warn "未找到订阅 token，已只更新本地客户端文件"
-  SUB_TOKEN=""
-fi
-
-if [[ -n "$SUB_TOKEN" ]]; then
-  SUB_DIR="/usr/local/nginx/html/sub/${SUB_TOKEN}"
-  install -d -m 755 "$SUB_DIR"
-  cp "$V2RAYN_FILE" "$SUB_DIR/v2rayn-raw.txt"
-  base64 "$V2RAYN_FILE" | tr -d '\n' > "$SUB_DIR/v2rayn.txt"
-  info "订阅文件已更新: $SUB_DIR"
-
-  SUB_DIRECT_DOMAIN="${REALITY_DOMAIN}"
-  V2RAYN_SUB_URL="https://${SUB_DIRECT_DOMAIN}/sub/${SUB_TOKEN}/v2rayn.txt"
-  V2RAYN_QR_FILE="${USER_HOME}/subscription-v2rayn.png"
-  SUB_LINKS_FILE="${USER_HOME}/subscription-links.txt"
-
-  MIHOMO_SUB_LABELS=()
-  MIHOMO_SUB_URLS=()
-  MIHOMO_QR_FILES=()
-
-  cp "$MIHOMO_FULL_FILE" "$SUB_DIR/mihomo-full.yaml"
-  cp "$MIHOMO_NODES_FILE" "$SUB_DIR/mihomo-nodes.yaml"
-  MIHOMO_SUB_LABELS+=("Mihomo 完整分流订阅" "Mihomo 纯节点订阅")
-  MIHOMO_SUB_URLS+=(
-    "https://${SUB_DIRECT_DOMAIN}/sub/${SUB_TOKEN}/mihomo-full.yaml"
-    "https://${SUB_DIRECT_DOMAIN}/sub/${SUB_TOKEN}/mihomo-nodes.yaml"
-  )
-  MIHOMO_QR_FILES+=(
-    "${USER_HOME}/subscription-mihomo-full.png"
-    "${USER_HOME}/subscription-mihomo-nodes.png"
-  )
-
-  MIHOMO_LINK_LINES=""
-  MIHOMO_QR_LINES=""
-  for i in "${!MIHOMO_SUB_LABELS[@]}"; do
-    MIHOMO_LINK_LINES+="${MIHOMO_SUB_LABELS[$i]}:\n${MIHOMO_SUB_URLS[$i]}\n\n"
-    MIHOMO_QR_LINES+="${MIHOMO_SUB_LABELS[$i]}: ${MIHOMO_QR_FILES[$i]}\n"
-  done
-  printf -v MIHOMO_LINK_LINES '%b' "$MIHOMO_LINK_LINES"
-  printf -v MIHOMO_QR_LINES '%b' "$MIHOMO_QR_LINES"
-
-  print_subscription_qr() {
-    local label="$1"
-    local url="$2"
-
-    command -v qrencode >/dev/null 2>&1 || return 1
-
-    echo -e "${YELLOW}[+] ${label} 订阅二维码（手机可直接扫描导入）${NC}"
-    qrencode -t ANSIUTF8 -m 1 "$url"
-    echo ""
+update_subscriptions() {
+  local token_file="/etc/xhttp-cdn/sub_token"
+  [[ -f "$token_file" ]] || {
+    warn "未找到订阅 token，仅更新本地客户端文件"
+    return
   }
 
-  save_subscription_qr_png() {
-    local url="$1"
-    local output_file="$2"
+  local token sub_dir v2rayn_url mihomo_full_url mihomo_nodes_url
+  token=$(tr -d '\r\n' < "$token_file")
+  sub_dir="/usr/local/nginx/html/sub/${token}"
+  v2rayn_url="https://${REALITY_DOMAIN}/sub/${token}/v2rayn.txt"
+  mihomo_full_url="https://${REALITY_DOMAIN}/sub/${token}/mihomo-full.yaml"
+  mihomo_nodes_url="https://${REALITY_DOMAIN}/sub/${token}/mihomo-nodes.yaml"
 
-    command -v qrencode >/dev/null 2>&1 || return 1
+  install -d -m 755 "$sub_dir"
+  cp "$V2RAYN_FILE" "$sub_dir/v2rayn-raw.txt"
+  base64 "$V2RAYN_FILE" | tr -d '\n' > "$sub_dir/v2rayn.txt"
+  cp "$MIHOMO_FULL_FILE" "$sub_dir/mihomo-full.yaml"
+  cp "$MIHOMO_NODES_FILE" "$sub_dir/mihomo-nodes.yaml"
 
-    qrencode -o "$output_file" -s 8 -m 2 "$url"
+  check_subscription() {
+    cmp -s "$2" <(curl -kfsS --resolve "${REALITY_DOMAIN}:443:127.0.0.1" \
+      "https://${REALITY_DOMAIN}$1") ||
+      error "订阅自检失败: $1"
   }
 
-  check_subscription_url() {
-    local domain="$1"
-    local path="$2"
-    local expected_file="$3"
-    local label="$4"
-    local tmp_body tmp_head http_code
+  check_subscription "/sub/${token}/v2rayn.txt" "$sub_dir/v2rayn.txt"
+  check_subscription "/sub/${token}/mihomo-full.yaml" "$sub_dir/mihomo-full.yaml"
+  check_subscription "/sub/${token}/mihomo-nodes.yaml" "$sub_dir/mihomo-nodes.yaml"
 
-    tmp_body=$(mktemp)
-    tmp_head=$(mktemp)
-
-    http_code=$(curl -k -sS --resolve "${domain}:443:127.0.0.1" \
-      -D "$tmp_head" -o "$tmp_body" -w "%{http_code}" "https://${domain}${path}" || true)
-
-    if [[ "$http_code" != "200" ]]; then
-      warn "${label} 订阅自检失败，HTTP 状态码: ${http_code}"
-      cat "$tmp_head" || true
-      rm -f "$tmp_body" "$tmp_head"
-      error "${label} 订阅链接不可用，请检查 Nginx / Xray / 域名配置"
-    fi
-
-    if ! cmp -s "$expected_file" "$tmp_body"; then
-      rm -f "$tmp_body" "$tmp_head"
-      error "${label} 订阅自检失败，返回内容与落盘文件不一致"
-    fi
-
-    rm -f "$tmp_body" "$tmp_head"
-  }
-
-  info "验证订阅链接..."
-  check_subscription_url "$SUB_DIRECT_DOMAIN" "/sub/${SUB_TOKEN}/v2rayn.txt" "$SUB_DIR/v2rayn.txt" "V2RayN(直连订阅)"
-  check_subscription_url "$SUB_DIRECT_DOMAIN" "/sub/${SUB_TOKEN}/mihomo-full.yaml" "$SUB_DIR/mihomo-full.yaml" "Mihomo(完整分流订阅)"
-  check_subscription_url "$SUB_DIRECT_DOMAIN" "/sub/${SUB_TOKEN}/mihomo-nodes.yaml" "$SUB_DIR/mihomo-nodes.yaml" "Mihomo(纯节点订阅)"
-  info "订阅链接自检通过"
-
-  cat > "$SUB_LINKS_FILE" << SUBLINKEOF
+  cat > "$USER_HOME/subscription-links.txt" << SUBLINKEOF
 V2RayN / Shadowrocket 订阅:
-$V2RAYN_SUB_URL
+$v2rayn_url
 
-${MIHOMO_LINK_LINES}
+Mihomo 完整分流订阅:
+$mihomo_full_url
+
+Mihomo 纯节点订阅:
+$mihomo_nodes_url
 
 二维码 PNG 文件:
-V2RayN / Shadowrocket: $V2RAYN_QR_FILE
-${MIHOMO_QR_LINES}
+V2RayN / Shadowrocket: $USER_HOME/subscription-v2rayn.png
+Mihomo 完整分流: $USER_HOME/subscription-mihomo-full.png
+Mihomo 纯节点: $USER_HOME/subscription-mihomo-nodes.png
 SUBLINKEOF
+  chown "$(stat -c '%u:%g' "$USER_HOME")" "$USER_HOME/subscription-links.txt"
 
-  echo ""
   echo -e "${YELLOW}[+] 订阅链接（Ctrl Shift + C 复制）${NC}"
-  echo "V2RayN / Shadowrocket 订阅: $V2RAYN_SUB_URL"
-  for i in "${!MIHOMO_SUB_LABELS[@]}"; do
-    echo "${MIHOMO_SUB_LABELS[$i]}: ${MIHOMO_SUB_URLS[$i]}"
-  done
-  info "订阅链接已保存到 $SUB_LINKS_FILE"
+  echo "V2RayN / Shadowrocket: $v2rayn_url"
+  echo "Mihomo 完整分流: $mihomo_full_url"
+  echo "Mihomo 纯节点: $mihomo_nodes_url"
+  info "订阅文件已更新: $sub_dir"
 
   if command -v qrencode >/dev/null 2>&1; then
-    save_subscription_qr_png "$V2RAYN_SUB_URL" "$V2RAYN_QR_FILE" && \
-      info "V2RayN / Shadowrocket 订阅二维码 PNG 已保存到 $V2RAYN_QR_FILE"
-    for i in "${!MIHOMO_SUB_LABELS[@]}"; do
-      save_subscription_qr_png "${MIHOMO_SUB_URLS[$i]}" "${MIHOMO_QR_FILES[$i]}" && \
-        info "${MIHOMO_SUB_LABELS[$i]} 二维码 PNG 已保存到 ${MIHOMO_QR_FILES[$i]}"
-    done
-    echo ""
-    print_subscription_qr "V2RayN / Shadowrocket" "$V2RAYN_SUB_URL"
-    for i in "${!MIHOMO_SUB_LABELS[@]}"; do
-      print_subscription_qr "${MIHOMO_SUB_LABELS[$i]}" "${MIHOMO_SUB_URLS[$i]}"
-    done
+    output_qr() {
+      local label="$1" url="$2" file="$3"
+      qrencode -o "$file" -s 8 -m 2 "$url"
+      chown "$(stat -c '%u:%g' "$USER_HOME")" "$file"
+      echo -e "${YELLOW}[+] ${label}${NC}"
+      qrencode -t ANSIUTF8 -m 1 "$url"
+    }
+    output_qr "V2RayN / Shadowrocket" "$v2rayn_url" "$USER_HOME/subscription-v2rayn.png"
+    output_qr "Mihomo 完整分流" "$mihomo_full_url" "$USER_HOME/subscription-mihomo-full.png"
+    output_qr "Mihomo 纯节点" "$mihomo_nodes_url" "$USER_HOME/subscription-mihomo-nodes.png"
   else
     warn "未检测到 qrencode，已跳过订阅二维码输出"
   fi
-else
-  echo ""
-  echo -e "${CYAN}[+] 扩展模式添加完成${NC}"
-  echo "新增节点: $NODE_NAME"
-  echo "V2RayN 节点文件: $V2RAYN_FILE"
-  echo "Mihomo 完整分流配置: $MIHOMO_FULL_FILE"
-  echo "Mihomo 纯节点配置: $MIHOMO_NODES_FILE"
-  echo ""
-  warn "未找到订阅 token，无法输出订阅链接/二维码，请先运行主脚本"
-fi
-
-build_cache_bypass_rule() {
-  local domains=()
-  local domain existing expr
-
-  add_unique_domain() {
-    local value="$1"
-    [[ -n "$value" ]] || return 0
-    for existing in "${domains[@]}"; do
-      [[ "$existing" == "$value" ]] && return 0
-    done
-    domains+=("$value")
-  }
-
-  add_unique_domain "$DEFAULT_CDN_DOMAIN"
-  add_unique_domain "$CDN_A"
-  add_unique_domain "$CDN_B"
-
-  expr=""
-  for domain in "${domains[@]}"; do
-    if [[ -n "$expr" ]]; then
-      expr+=" or "
-    fi
-    expr+="(http.host eq \"${domain}\")"
-  done
-
-  printf '%s or (http.request.uri.path contains "%s")' "$expr" "$XHTTP_PATH"
 }
 
-CACHE_BYPASS_RULE=$(build_cache_bypass_rule)
+update_subscriptions
+
+CACHE_BYPASS_RULE="(http.host eq \"${DEFAULT_CDN_DOMAIN}\")"
+for domain in "$CDN_A" "$CDN_B"; do
+  [[ "$CACHE_BYPASS_RULE" == *"\"${domain}\""* ]] ||
+    CACHE_BYPASS_RULE+=" or (http.host eq \"${domain}\")"
+done
+CACHE_BYPASS_RULE+=" or (http.request.uri.path contains \"${XHTTP_PATH}\")"
 
 echo ""
 echo -e "${YELLOW}[+] 建议配置缓存绕过规则:${NC}"

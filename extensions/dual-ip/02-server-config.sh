@@ -13,48 +13,29 @@ XRAY_CONF="/usr/local/etc/xray/config.json"
 [[ -f "$NGINX_CONF" ]] || error "未找到 $NGINX_CONF"
 [[ -f "$XRAY_CONF" ]] || error "未找到 $XRAY_CONF"
 
-DUAL_IP_STATE_DIR="/etc/xhttp-cdn"
-DUAL_IP_STATE_FILE="${DUAL_IP_STATE_DIR}/dual-ip-domains"
-DUAL_CDN_STATE_FILE="${DUAL_IP_STATE_DIR}/dual-cdn-domains"
-install -d -m 700 "$DUAL_IP_STATE_DIR"
+DUAL_IP_STATE_FILE="/etc/xhttp-cdn/dual-ip-domains"
+DUAL_CDN_STATE_FILE="/etc/xhttp-cdn/dual-cdn-domains"
+install -d -m 700 /etc/xhttp-cdn
 
+PREV_DUAL_IP_DOMAINS=()
 if [[ -f "$DUAL_IP_STATE_FILE" ]]; then
-  while IFS= read -r old_domain; do
-    add_old_reality_domain "$old_domain"
-  done < "$DUAL_IP_STATE_FILE"
-fi
-
-CURRENT_DUAL_CDN_DOMAINS=()
-add_current_dual_cdn_domain() {
-  local domain="$1" existing
-  [[ -n "$domain" ]] || return 0
-  for existing in "${CURRENT_DUAL_CDN_DOMAINS[@]}"; do
-    [[ "$existing" == "$domain" ]] && return 0
-  done
-  CURRENT_DUAL_CDN_DOMAINS+=("$domain")
-}
-
-if [[ -f "$DUAL_CDN_STATE_FILE" ]]; then
-  while IFS= read -r domain; do
-    add_current_dual_cdn_domain "$domain"
-  done < "$DUAL_CDN_STATE_FILE"
+  mapfile -t PREV_DUAL_IP_DOMAINS < "$DUAL_IP_STATE_FILE"
 fi
 
 CERT_DOMAINS=()
 add_cert_domain() {
-  local domain="$1" existing
-  [[ -n "$domain" ]] || return 0
-  for existing in "${CERT_DOMAINS[@]}"; do
-    [[ "$existing" == "$domain" ]] && return 0
-  done
-  CERT_DOMAINS+=("$domain")
+  if [[ -n "$1" && " ${CERT_DOMAINS[*]} " != *" $1 "* ]]; then
+    CERT_DOMAINS+=("$1")
+  fi
 }
 
 add_cert_domain "$REALITY_DOMAIN"
 add_cert_domain "$DEFAULT_CDN_DOMAIN"
-for domain in "${CURRENT_DUAL_CDN_DOMAINS[@]}"; do
-  add_cert_domain "$domain"
-done
+if [[ -f "$DUAL_CDN_STATE_FILE" ]]; then
+  while IFS= read -r domain; do
+    add_cert_domain "$domain"
+  done < "$DUAL_CDN_STATE_FILE"
+fi
 add_cert_domain "$REALITY_DOMAIN_V4"
 add_cert_domain "$REALITY_DOMAIN_V6"
 
@@ -81,17 +62,16 @@ if cert_has_all_domains; then
   info "检测到证书已包含 IPv4 / IPv6 Reality 域名，跳过重新签发"
 else
   info "申请 / 更新包含 IPv4、IPv6 Reality 域名的证书..."
-  set +e
-  ISSUE_OUTPUT=$(acme.sh --issue "${ACME_DOMAIN_ARGS[@]}" \
-    --standalone --listen-v6 --keylength ec-256 \
-    --pre-hook "${NGINX_STOP_CMD} 2>/dev/null || true" \
-    --post-hook "${NGINX_START_CMD} 2>/dev/null || true" 2>&1)
-  ISSUE_CODE=$?
-  set -e
-  echo "$ISSUE_OUTPUT"
-  if [[ $ISSUE_CODE -ne 0 ]] && ! echo "$ISSUE_OUTPUT" | grep -Eqi 'Domains not changed|Skipping\. Next renewal time'; then
-    error "IPv4 / IPv6 Reality 域名证书申请失败"
+  if ! ISSUE_OUTPUT=$(acme.sh --issue "${ACME_DOMAIN_ARGS[@]}" \
+      --standalone --listen-v6 --keylength ec-256 \
+      --pre-hook "${NGINX_STOP_CMD} 2>/dev/null || true" \
+      --post-hook "${NGINX_START_CMD} 2>/dev/null || true" 2>&1); then
+    grep -Eqi 'Domains not changed|Skipping\. Next renewal time' <<< "$ISSUE_OUTPUT" || {
+      echo "$ISSUE_OUTPUT"
+      error "IPv4 / IPv6 Reality 域名证书申请失败"
+    }
   fi
+  echo "$ISSUE_OUTPUT"
 fi
 
 info "安装证书..."
@@ -158,8 +138,9 @@ EOF
 
 remove_nginx_server_block() {
   local domain="$1"
-  local input="$2"
-  local output="$3"
+  local config="$2"
+  local output
+  output=$(mktemp)
 
   awk -v domain="$domain" '
     function count_braces(line, i, c) {
@@ -192,41 +173,27 @@ remove_nginx_server_block() {
     }
 
     { print }
-  ' "$input" > "$output"
-}
-
-cert_domain_targeted() {
-  local domain="$1" target
-  for target in "${CERT_DOMAINS[@]}"; do
-    [[ "$domain" == "$target" ]] && return 0
-  done
-  return 1
+  ' "$config" > "$output"
+  cat "$output" > "$config"
+  rm -f "$output"
 }
 
 tmp_nginx=$(mktemp)
-tmp_nginx_next=$(mktemp)
-
 cp "$NGINX_CONF" "$tmp_nginx"
-while IFS= read -r prev_domain; do
-  [[ "$prev_domain" == "_" ]] && continue
-  if ! cert_domain_targeted "$prev_domain"; then
-    remove_nginx_server_block "$prev_domain" "$tmp_nginx" "$tmp_nginx_next"
-    mv "$tmp_nginx_next" "$tmp_nginx"
-    info "移除历史 server block: $prev_domain"
-  fi
-done < <(awk '/^[[:space:]]*server_name[[:space:]]/ { gsub(/;/, ""); for (i = 2; i <= NF; i++) print $i }' "$NGINX_CONF")
 
-for old_domain in "${OLD_REALITY_DOMAINS[@]}" "$REALITY_DOMAIN_V4" "$REALITY_DOMAIN_V6"; do
-  remove_nginx_server_block "$old_domain" "$tmp_nginx" "$tmp_nginx_next"
-  mv "$tmp_nginx_next" "$tmp_nginx"
+for domain in "${PREV_DUAL_IP_DOMAINS[@]}" "$REALITY_DOMAIN_V4" "$REALITY_DOMAIN_V6"; do
+  [[ -n "$domain" && "$domain" != "$REALITY_DOMAIN" ]] || continue
+  remove_nginx_server_block "$domain" "$tmp_nginx"
 done
 
 sed -i '$d' "$tmp_nginx"
-append_reality_block "$REALITY_DOMAIN_V4" "$FALLBACK_ORIGIN_V4" "$FALLBACK_HOST_V4" >> "$tmp_nginx"
-append_reality_block "$REALITY_DOMAIN_V6" "$FALLBACK_ORIGIN_V6" "$FALLBACK_HOST_V6" >> "$tmp_nginx"
-echo "}" >> "$tmp_nginx"
+{
+  append_reality_block "$REALITY_DOMAIN_V4" "$FALLBACK_ORIGIN_V4" "$FALLBACK_HOST_V4"
+  append_reality_block "$REALITY_DOMAIN_V6" "$FALLBACK_ORIGIN_V6" "$FALLBACK_HOST_V6"
+  echo "}"
+} >> "$tmp_nginx"
 cat "$tmp_nginx" > "$NGINX_CONF"
-rm -f "$tmp_nginx" "$tmp_nginx_next"
+rm -f "$tmp_nginx"
 info "已写入 IPv4 / IPv6 Reality 独立回落站"
 
 printf '%s\n%s\n' "$REALITY_DOMAIN_V4" "$REALITY_DOMAIN_V6" > "$DUAL_IP_STATE_FILE"

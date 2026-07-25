@@ -23,28 +23,19 @@ append_with_includes() {
   done < "$1"
 }
 
-build_one() {
-  local output="$1"
-  local tmp module
+OUT_DIR="${OUT_DIR:-$ROOT_DIR/dist}"
+OUTPUT="$OUT_DIR/add-dual-ip.sh"
+mkdir -p "$OUT_DIR"
 
-  tmp="$(mktemp)"
-  cat > "$tmp" <<'SCRIPTHEADER'
+cat > "$OUTPUT" <<'SCRIPTHEADER'
 #!/bin/bash
 set -e
 SCRIPTHEADER
 
-  for module in "${MODULES[@]}"; do
-    append_with_includes "$ROOT_DIR/$module" >> "$tmp"
-    printf '\n' >> "$tmp"
-  done
+for module in "${MODULES[@]}"; do
+  append_with_includes "$ROOT_DIR/$module" >> "$OUTPUT"
+  printf '\n' >> "$OUTPUT"
+done
+chmod +x "$OUTPUT"
 
-  mv "$tmp" "$output"
-  chmod +x "$output"
-}
-
-OUT_DIR="${OUT_DIR:-$ROOT_DIR/dist}"
-mkdir -p "$OUT_DIR"
-
-build_one "$OUT_DIR/add-dual-ip.sh"
-
-echo "Generated $OUT_DIR/add-dual-ip.sh"
+echo "Generated $OUTPUT"

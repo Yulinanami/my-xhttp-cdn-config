@@ -69,17 +69,16 @@ rawurlencode() {
 get_query_param() {
   local line="$1"
   local key="$2"
-  local query part name value
+  local query part
+  local -a parts
 
   query="${line#*\?}"
   query="${query%%#*}"
 
   IFS='&' read -r -a parts <<< "$query"
   for part in "${parts[@]}"; do
-    name="${part%%=*}"
-    value="${part#*=}"
-    if [[ "$name" == "$key" ]]; then
-      printf '%s' "$value"
+    if [[ "${part%%=*}" == "$key" ]]; then
+      printf '%s' "${part#*=}"
       return 0
     fi
   done
@@ -93,11 +92,9 @@ extract_uri_user() {
 }
 
 extract_uri_server() {
-  local line="$1"
-  local after_at hostport
-  after_at="${line#*@}"
-  hostport="${after_at%%\?*}"
-  printf '%s' "${hostport%:443}"
+  local server="${1#*@}"
+  server="${server%%\?*}"
+  printf '%s' "${server%:443}"
 }
 
 strip_ipv6_brackets() {
@@ -116,34 +113,19 @@ format_uri_host() {
   fi
 }
 
-add_candidate_home() {
-  local dir="$1"
-  [[ -n "$dir" && -d "$dir" ]] || return 0
-  CANDIDATE_HOMES+=("$dir")
-}
-
 find_client_files() {
-  local dir uid_home
-
-  CANDIDATE_HOMES=()
-  if [[ -n "$SUDO_USER" && "$SUDO_USER" != "root" ]]; then
-    add_candidate_home "$(eval echo "~$SUDO_USER" 2>/dev/null || true)"
+  if [[ -n "${SUDO_USER:-}" && "$SUDO_USER" != "root" ]]; then
+    USER_HOME=$(getent passwd "$SUDO_USER" | cut -d: -f6)
+  else
+    USER_HOME=$(getent passwd 1000 2>/dev/null | cut -d: -f6 || true)
   fi
-  add_candidate_home "${HOME:-}"
-  add_candidate_home "/root"
-  uid_home=$(getent passwd 1000 2>/dev/null | cut -d: -f6 || true)
-  add_candidate_home "$uid_home"
+  [[ -n "$USER_HOME" && -d "$USER_HOME" ]] || USER_HOME="/root"
 
-  for dir in "${CANDIDATE_HOMES[@]}"; do
-    if [[ -f "$dir/client-config.txt" && -f "$dir/client-config-mihomo-full.yaml" && -f "$dir/client-config-mihomo-nodes.yaml" ]]; then
-      USER_HOME="$dir"
-      V2RAYN_FILE="$dir/client-config.txt"
-      MIHOMO_FULL_FILE="$dir/client-config-mihomo-full.yaml"
-      MIHOMO_NODES_FILE="$dir/client-config-mihomo-nodes.yaml"
-      MIHOMO_TARGET_FILES=("$MIHOMO_FULL_FILE" "$MIHOMO_NODES_FILE")
-      return 0
-    fi
-  done
+  V2RAYN_FILE="$USER_HOME/client-config.txt"
+  MIHOMO_FULL_FILE="$USER_HOME/client-config-mihomo-full.yaml"
+  MIHOMO_NODES_FILE="$USER_HOME/client-config-mihomo-nodes.yaml"
 
-  error "未找到 client-config.txt / client-config-mihomo-full.yaml / client-config-mihomo-nodes.yaml，请先运行主脚本"
+  [[ -f "$V2RAYN_FILE" ]] || error "未找到 $V2RAYN_FILE，请先运行主脚本"
+  [[ -f "$MIHOMO_FULL_FILE" ]] || error "未找到 $MIHOMO_FULL_FILE，请先运行主脚本"
+  [[ -f "$MIHOMO_NODES_FILE" ]] || error "未找到 $MIHOMO_NODES_FILE，请先运行主脚本"
 }

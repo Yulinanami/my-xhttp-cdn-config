@@ -46,21 +46,6 @@ fi
 
 [[ "$FALLBACK_MODE" == "proxy" || "$FALLBACK_MODE" == "static" ]] || error "主脚本回落方式无效，请重新运行主脚本"
 
-OLD_REALITY_DOMAINS=()
-add_old_reality_domain() {
-  local domain="$1" existing
-  [[ -n "$domain" ]] || return 0
-  [[ "$domain" == "$REALITY_DOMAIN" ]] && return 0
-  for existing in "${OLD_REALITY_DOMAINS[@]}"; do
-    [[ "$existing" == "$domain" ]] && return 0
-  done
-  OLD_REALITY_DOMAINS+=("$domain")
-}
-
-while IFS= read -r old_line; do
-  add_old_reality_domain "$(get_query_param "$old_line" "sni" || true)"
-done < <(grep -F 'xhttp%2BReality%20IPv' "$V2RAYN_FILE" | tr -d '\r' || true)
-
 DEFAULT_IPV4=""
 DEFAULT_IPV6=""
 if [[ "$BASE_SERVER" == *:* ]]; then
@@ -106,7 +91,7 @@ if [[ "$FALLBACK_MODE" == "proxy" ]]; then
   else
     read -rp "请输入 ${REALITY_DOMAIN_V4} 的回落网站: " FALLBACK_ORIGIN_V4
     FALLBACK_ORIGIN_V4=$(normalize_proxy_origin "$FALLBACK_ORIGIN_V4") || error "IPv4 Reality 回落网站格式无效"
-    FALLBACK_HOST_V4=$(extract_host_from_url "$FALLBACK_ORIGIN_V4")
+    FALLBACK_HOST_V4=${FALLBACK_ORIGIN_V4#*://}
     [[ "$FALLBACK_ORIGIN_V4" != "$REALITY_FALLBACK_ORIGIN" && "$FALLBACK_ORIGIN_V4" != "$CDN_FALLBACK_ORIGIN" ]] || error "不同入口域名不能共用回落网站"
   fi
 
@@ -116,7 +101,7 @@ if [[ "$FALLBACK_MODE" == "proxy" ]]; then
   else
     read -rp "请输入 ${REALITY_DOMAIN_V6} 的回落网站: " FALLBACK_ORIGIN_V6
     FALLBACK_ORIGIN_V6=$(normalize_proxy_origin "$FALLBACK_ORIGIN_V6") || error "IPv6 Reality 回落网站格式无效"
-    FALLBACK_HOST_V6=$(extract_host_from_url "$FALLBACK_ORIGIN_V6")
+    FALLBACK_HOST_V6=${FALLBACK_ORIGIN_V6#*://}
     [[ "$FALLBACK_ORIGIN_V6" != "$REALITY_FALLBACK_ORIGIN" && "$FALLBACK_ORIGIN_V6" != "$CDN_FALLBACK_ORIGIN" ]] || error "不同入口域名不能共用回落网站"
   fi
   [[ "$FALLBACK_ORIGIN_V4" != "$FALLBACK_ORIGIN_V6" ]] || error "IPv4 和 IPv6 Reality 域名不能共用回落网站"

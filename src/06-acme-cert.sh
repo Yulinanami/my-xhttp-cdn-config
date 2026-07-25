@@ -23,18 +23,10 @@ have_existing_dual_cert() {
   [[ -f "$ACME_CERT_HOME/fullchain.cer" ]] || return 1
   [[ -f "$ACME_CERT_HOME/${REALITY_DOMAIN}.key" ]] || return 1
 
-  local cert_domains domain has_reality has_cdn
+  local cert_domains
   cert_domains=$(openssl x509 -in "$ACME_CERT_HOME/fullchain.cer" -noout -ext subjectAltName 2>/dev/null | grep -o 'DNS:[^,[:space:]]*' | sed 's/^DNS://' || true)
-  has_reality=0
-  has_cdn=0
-  while IFS= read -r domain; do
-    [[ -n "$domain" ]] || continue
-    [[ "$domain" == "$REALITY_DOMAIN" ]] && has_reality=1
-    [[ "$domain" == "$CDN_DOMAIN" ]] && has_cdn=1
-  done <<< "$cert_domains"
-
-  [[ "$has_reality" -eq 1 && "$has_cdn" -eq 1 ]] || return 1
-  return 0
+  grep -Fxq "$REALITY_DOMAIN" <<< "$cert_domains" &&
+    grep -Fxq "$CDN_DOMAIN" <<< "$cert_domains"
 }
 
 issue_dual_cert() {
@@ -54,14 +46,13 @@ if have_existing_dual_cert; then
   info "检测到已存在的双域名证书，跳过重新签发，直接复用"
 else
   info "未检测到可复用的双域名证书，开始申请 (需要 80 端口空闲)..."
-  set +e
-  ISSUE_OUTPUT=$(issue_dual_cert 2>&1)
-  ISSUE_CODE=$?
-  set -e
-  echo "$ISSUE_OUTPUT"
-  if [[ $ISSUE_CODE -ne 0 ]] && ! echo "$ISSUE_OUTPUT" | grep -Eqi 'Domains not changed|Skipping\. Next renewal time'; then
-    error "双域名证书申请失败"
+  if ! ISSUE_OUTPUT=$(issue_dual_cert 2>&1); then
+    grep -Eqi 'Domains not changed|Skipping\. Next renewal time' <<< "$ISSUE_OUTPUT" || {
+      echo "$ISSUE_OUTPUT"
+      error "双域名证书申请失败"
+    }
   fi
+  echo "$ISSUE_OUTPUT"
 fi
 
 echo ""

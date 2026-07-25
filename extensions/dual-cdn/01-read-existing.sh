@@ -66,7 +66,7 @@ if [[ "$FALLBACK_MODE" == "proxy" ]]; then
   else
     read -rp "请输入 ${CDN_A} 的回落网站: " CDN_A_FALLBACK_ORIGIN
     CDN_A_FALLBACK_ORIGIN=$(normalize_proxy_origin "$CDN_A_FALLBACK_ORIGIN") || error "CDN-A 回落网站格式无效"
-    CDN_A_FALLBACK_HOST=$(extract_host_from_url "$CDN_A_FALLBACK_ORIGIN")
+    CDN_A_FALLBACK_HOST=${CDN_A_FALLBACK_ORIGIN#*://}
     [[ "$CDN_A_FALLBACK_ORIGIN" != "$REALITY_FALLBACK_ORIGIN" && "$CDN_A_FALLBACK_ORIGIN" != "$CDN_FALLBACK_ORIGIN" ]] || error "不同入口域名不能共用回落网站"
   fi
 
@@ -79,7 +79,7 @@ if [[ "$FALLBACK_MODE" == "proxy" ]]; then
   else
     read -rp "请输入 ${CDN_B} 的回落网站: " CDN_B_FALLBACK_ORIGIN
     CDN_B_FALLBACK_ORIGIN=$(normalize_proxy_origin "$CDN_B_FALLBACK_ORIGIN") || error "CDN-B 回落网站格式无效"
-    CDN_B_FALLBACK_HOST=$(extract_host_from_url "$CDN_B_FALLBACK_ORIGIN")
+    CDN_B_FALLBACK_HOST=${CDN_B_FALLBACK_ORIGIN#*://}
     [[ "$CDN_B_FALLBACK_ORIGIN" != "$REALITY_FALLBACK_ORIGIN" && "$CDN_B_FALLBACK_ORIGIN" != "$CDN_FALLBACK_ORIGIN" ]] || error "不同入口域名不能共用回落网站"
     [[ "$CDN_B_FALLBACK_ORIGIN" != "$CDN_A_FALLBACK_ORIGIN" ]] || error "CDN-A 和 CDN-B 不能共用回落网站"
   fi

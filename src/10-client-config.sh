@@ -3,7 +3,7 @@
 # ==================================================
 
 info "[6/6] 生成客户端配置"
-XHTTP_PATH_ENC=$(echo "$XHTTP_PATH" | sed 's|/|%2F|g')
+XHTTP_PATH_ENC=${XHTTP_PATH//\//%2F}
 
 rm -f /etc/xhttp-cdn/dual-cdn-domains /etc/xhttp-cdn/dual-ip-domains 2>/dev/null || true
 
@@ -103,3 +103,8 @@ MIHOMOEOF
 cat > "$MIHOMO_NODES_FILE" << MIHOMOEOF
 @@include templates/mihomo-nodes.yaml.tmpl
 MIHOMOEOF
+
+chown "$(stat -c '%u:%g' "$USER_HOME")" \
+  "$USER_HOME/client-config.txt" \
+  "$MIHOMO_FULL_FILE" \
+  "$MIHOMO_NODES_FILE"

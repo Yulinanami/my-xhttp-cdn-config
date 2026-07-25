@@ -15,11 +15,40 @@ XRAY_CONF="/usr/local/etc/xray/config.json"
 WS_INBOUND_PORT=8002
 WS_INBOUND_TAG="vless-ws-cdn"
 
-# ---------- Xray：写入 vless+ws 入站 ----------
+ws_inbound_file=$(mktemp)
+cat > "$ws_inbound_file" <<EOF
+        ,
+        {
+            "tag": "${WS_INBOUND_TAG}",
+            "listen": "127.0.0.1",
+            "port": ${WS_INBOUND_PORT},
+            "protocol": "vless",
+            "settings": {
+                "clients": [
+                    {
+                        "id": "${UUID2}",
+                        "level": 0
+                    }
+                ],
+                "decryption": "none"
+            },
+            "streamSettings": {
+                "network": "ws",
+                "wsSettings": {
+                    "path": "${WS_PATH}"
+                }
+            },
+            "sniffing": {
+                "enabled": true,
+                "destOverride": ["http", "tls", "quic"],
+                "metadataOnly": false,
+                "routeOnly": true
+            }
+        }
+EOF
 
-# 移除旧的 vless-ws-cdn 入站（连同其前置的独立逗号行）
 tmp_xray=$(mktemp)
-awk -v tag="\"tag\": \"${WS_INBOUND_TAG}\"" '
+awk -v tag="\"tag\": \"${WS_INBOUND_TAG}\"" -v node_file="$ws_inbound_file" '
   function braces(line,  i, c) {
     for (i = 1; i <= length(line); i++) {
       c = substr(line, i, 1)
@@ -57,68 +86,25 @@ awk -v tag="\"tag\": \"${WS_INBOUND_TAG}\"" '
     next
   }
 
-  $0 == "        ," { held = $0; pending = 1; next }
-  { print }
-' "$XRAY_CONF" > "$tmp_xray"
-
-# 在 inbounds 数组末尾插入新的 ws 入站
-tmp_xray_next=$(mktemp)
-ws_inbound_file=$(mktemp)
-cat > "$ws_inbound_file" <<EOF
-        ,
-        {
-            "tag": "${WS_INBOUND_TAG}",
-            "listen": "127.0.0.1",
-            "port": ${WS_INBOUND_PORT},
-            "protocol": "vless",
-            "settings": {
-                "clients": [
-                    {
-                        "id": "${UUID2}",
-                        "level": 0
-                    }
-                ],
-                "decryption": "none"
-            },
-            "streamSettings": {
-                "network": "ws",
-                "wsSettings": {
-                    "path": "${WS_PATH}"
-                }
-            },
-            "sniffing": {
-                "enabled": true,
-                "destOverride": ["http", "tls", "quic"],
-                "metadataOnly": false,
-                "routeOnly": true
-            }
-        }
-EOF
-
-awk -v node_file="$ws_inbound_file" '
   /"inbounds"[[:space:]]*:/ { in_inbounds = 1 }
-  in_inbounds && !inserted && /^    \],[[:space:]]*$/ {
+  in_inbounds && $0 == "        ," { held = $0; pending = 1; next }
+
+  in_inbounds && /^    \],[[:space:]]*$/ {
     while ((getline line < node_file) > 0) print line
     inserted = 1
+    in_inbounds = 0
   }
-  { print }
-' "$tmp_xray" > "$tmp_xray_next"
-cat "$tmp_xray_next" > "$XRAY_CONF"
-rm -f "$tmp_xray" "$tmp_xray_next" "$ws_inbound_file"
-info "已写入 Xray vless+ws 入站 (127.0.0.1:${WS_INBOUND_PORT})"
 
-# ---------- Nginx：在 CDN 域名 server block 中转发 ws ----------
+  { print }
+
+  END { if (!inserted) exit 1 }
+' "$XRAY_CONF" > "$tmp_xray" || error "未找到 Xray inbounds 数组"
+cat "$tmp_xray" > "$XRAY_CONF"
+rm -f "$tmp_xray" "$ws_inbound_file"
+info "已写入 Xray vless+ws 入站 (127.0.0.1:${WS_INBOUND_PORT})"
 
 WS_MARK_BEGIN="        # BEGIN common-nodes ws"
 WS_MARK_END="        # END common-nodes ws"
-
-tmp_nginx=$(mktemp)
-awk -v mark_begin="$WS_MARK_BEGIN" -v mark_end="$WS_MARK_END" '
-  $0 == mark_begin { skip = 1; next }
-  $0 == mark_end   { skip = 0; next }
-  skip             { next }
-  { print }
-' "$NGINX_CONF" > "$tmp_nginx"
 
 ws_location_file=$(mktemp)
 cat > "$ws_location_file" <<EOF
@@ -141,8 +127,13 @@ ${WS_MARK_BEGIN}
 ${WS_MARK_END}
 EOF
 
-tmp_nginx_next=$(mktemp)
-awk -v domain="$CDN_DOMAIN" -v node_file="$ws_location_file" '
+tmp_nginx=$(mktemp)
+awk -v domain="$CDN_DOMAIN" -v node_file="$ws_location_file" \
+    -v mark_begin="$WS_MARK_BEGIN" -v mark_end="$WS_MARK_END" '
+  $0 == mark_begin { skip = 1; next }
+  $0 == mark_end   { skip = 0; next }
+  skip             { next }
+
   /^[[:space:]]*server[[:space:]]*\{/ { in_server = 1 }
   in_server && !inserted && /^[[:space:]]*server_name[[:space:]]/ && index($0, domain) {
     print
@@ -152,12 +143,10 @@ awk -v domain="$CDN_DOMAIN" -v node_file="$ws_location_file" '
   }
   { print }
   END { exit inserted ? 0 : 1 }
-' "$tmp_nginx" > "$tmp_nginx_next" || error "未在 Nginx 配置中找到 CDN 域名 server block: $CDN_DOMAIN"
-cat "$tmp_nginx_next" > "$NGINX_CONF"
-rm -f "$tmp_nginx" "$tmp_nginx_next" "$ws_location_file"
+' "$NGINX_CONF" > "$tmp_nginx" || error "未在 Nginx 配置中找到 CDN 域名 server block: $CDN_DOMAIN"
+cat "$tmp_nginx" > "$NGINX_CONF"
+rm -f "$tmp_nginx" "$ws_location_file"
 info "已在 CDN 域名 server block 写入 WebSocket 转发"
-
-# ---------- hysteria2：安装与配置 ----------
 
 HYSTERIA_BIN="/usr/local/bin/hysteria"
 HYSTERIA_CONF_DIR="/etc/hysteria"
@@ -253,13 +242,10 @@ EOF
   HYSTERIA_RESTART_CMD="systemctl restart ${HYSTERIA_SERVICE}"
 fi
 
-# 证书续期后同时重启 nginx 与 hysteria2
 acme.sh --install-cert -d "$REALITY_DOMAIN" --ecc \
   --key-file /etc/ssl/private/private.key \
   --fullchain-file /etc/ssl/private/fullchain.cer \
   --reloadcmd "${NGINX_RESTART_CMD}; ${HYSTERIA_RESTART_CMD}"
-
-# ---------- 保存扩展参数并重启服务 ----------
 
 install -d -m 700 "$COMMON_STATE_DIR"
 cat > "$COMMON_STATE_FILE" <<EOF
@@ -279,4 +265,4 @@ if [[ "$SERVICE_TYPE" == "systemd" ]]; then
   systemctl is-active --quiet "$HYSTERIA_SERVICE" || error "hysteria2 启动失败，请检查 journalctl -u ${HYSTERIA_SERVICE}"
 fi
 info "Nginx / Xray / hysteria2 已重启"
-warn "hysteria2 使用 UDP ${HY2_PORT}，请确保防火墙 / 安全组已放行 (如 ufw allow ${HY2_PORT}/udp)"
+info "hysteria2 监听 UDP ${HY2_PORT}"

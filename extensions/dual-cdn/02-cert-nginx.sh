@@ -12,55 +12,31 @@ ACME_LISTEN_ARGS=()
 NGINX_CONF="/etc/nginx/nginx.conf"
 [[ -f "$NGINX_CONF" ]] || error "未找到 $NGINX_CONF"
 
-DUAL_CDN_STATE_DIR="/etc/xhttp-cdn"
-DUAL_CDN_STATE_FILE="${DUAL_CDN_STATE_DIR}/dual-cdn-domains"
-DUAL_IP_STATE_FILE="${DUAL_CDN_STATE_DIR}/dual-ip-domains"
-install -d -m 700 "$DUAL_CDN_STATE_DIR"
+DUAL_CDN_STATE_FILE="/etc/xhttp-cdn/dual-cdn-domains"
+DUAL_IP_STATE_FILE="/etc/xhttp-cdn/dual-ip-domains"
+install -d -m 700 /etc/xhttp-cdn
 
 PREV_DUAL_CDN_DOMAINS=()
 if [[ -f "$DUAL_CDN_STATE_FILE" ]]; then
-  while IFS= read -r d; do
-    [[ -n "$d" ]] && PREV_DUAL_CDN_DOMAINS+=("$d")
-  done < "$DUAL_CDN_STATE_FILE"
+  mapfile -t PREV_DUAL_CDN_DOMAINS < "$DUAL_CDN_STATE_FILE"
 fi
-
-CURRENT_DUAL_IP_DOMAINS=()
-add_current_dual_ip_domain() {
-  local domain="$1" existing
-  [[ -n "$domain" ]] || return 0
-  for existing in "${CURRENT_DUAL_IP_DOMAINS[@]}"; do
-    [[ "$existing" == "$domain" ]] && return 0
-  done
-  CURRENT_DUAL_IP_DOMAINS+=("$domain")
-}
-
-if [[ -f "$DUAL_IP_STATE_FILE" ]]; then
-  while IFS= read -r domain; do
-    add_current_dual_ip_domain "$domain"
-  done < "$DUAL_IP_STATE_FILE"
-fi
-
-while IFS= read -r line; do
-  add_current_dual_ip_domain "$(get_query_param "$line" "sni" || true)"
-done < <(grep -F 'xhttp%2BReality%20IPv' "$V2RAYN_FILE" | tr -d '\r' || true)
 
 CERT_DOMAINS=()
 add_cert_domain() {
-  local domain="$1" existing
-  [[ -n "$domain" ]] || return 0
-  for existing in "${CERT_DOMAINS[@]}"; do
-    [[ "$existing" == "$domain" ]] && return 0
-  done
-  CERT_DOMAINS+=("$domain")
+  if [[ -n "$1" && " ${CERT_DOMAINS[*]} " != *" $1 "* ]]; then
+    CERT_DOMAINS+=("$1")
+  fi
 }
 
 add_cert_domain "$REALITY_DOMAIN"
 add_cert_domain "$DEFAULT_CDN_DOMAIN"
 add_cert_domain "$CDN_A"
 add_cert_domain "$CDN_B"
-for domain in "${CURRENT_DUAL_IP_DOMAINS[@]}"; do
-  add_cert_domain "$domain"
-done
+if [[ -f "$DUAL_IP_STATE_FILE" ]]; then
+  while IFS= read -r domain; do
+    add_cert_domain "$domain"
+  done < "$DUAL_IP_STATE_FILE"
+fi
 
 ACME_DOMAIN_ARGS=()
 for domain in "${CERT_DOMAINS[@]}"; do
@@ -85,17 +61,16 @@ if cert_has_all_domains; then
   info "检测到证书已包含所需域名，跳过重新签发"
 else
   info "申请 / 更新包含 CDN-A、CDN-B 的证书..."
-  set +e
-  ISSUE_OUTPUT=$(acme.sh --issue "${ACME_DOMAIN_ARGS[@]}" \
-    --standalone "${ACME_LISTEN_ARGS[@]}" --keylength ec-256 \
-    --pre-hook "${NGINX_STOP_CMD} 2>/dev/null || true" \
-    --post-hook "${NGINX_START_CMD} 2>/dev/null || true" 2>&1)
-  ISSUE_CODE=$?
-  set -e
-  echo "$ISSUE_OUTPUT"
-  if [[ $ISSUE_CODE -ne 0 ]] && ! echo "$ISSUE_OUTPUT" | grep -Eqi 'Domains not changed|Skipping\. Next renewal time'; then
-    error "包含 CDN-A / CDN-B 的证书申请失败"
+  if ! ISSUE_OUTPUT=$(acme.sh --issue "${ACME_DOMAIN_ARGS[@]}" \
+      --standalone "${ACME_LISTEN_ARGS[@]}" --keylength ec-256 \
+      --pre-hook "${NGINX_STOP_CMD} 2>/dev/null || true" \
+      --post-hook "${NGINX_START_CMD} 2>/dev/null || true" 2>&1); then
+    grep -Eqi 'Domains not changed|Skipping\. Next renewal time' <<< "$ISSUE_OUTPUT" || {
+      echo "$ISSUE_OUTPUT"
+      error "包含 CDN-A / CDN-B 的证书申请失败"
+    }
   fi
+  echo "$ISSUE_OUTPUT"
 fi
 
 info "安装证书..."
@@ -159,8 +134,9 @@ EOF
 
 remove_nginx_server_block() {
   local domain="$1"
-  local input="$2"
-  local output="$3"
+  local config="$2"
+  local output
+  output=$(mktemp)
 
   awk -v domain="$domain" '
     function count_braces(line, i, c) {
@@ -193,55 +169,18 @@ remove_nginx_server_block() {
     }
 
     { print }
-  ' "$input" > "$output"
-}
-
-cert_domain_targeted() {
-  local domain="$1" target
-  for target in "${CERT_DOMAINS[@]}"; do
-    [[ "$domain" == "$target" ]] && return 0
-  done
-  return 1
+  ' "$config" > "$output"
+  cat "$output" > "$config"
+  rm -f "$output"
 }
 
 tmp_nginx=$(mktemp)
-tmp_nginx_next=$(mktemp)
 cp "$NGINX_CONF" "$tmp_nginx"
 
-while IFS= read -r prev_domain; do
-  [[ "$prev_domain" == "_" ]] && continue
-  if ! cert_domain_targeted "$prev_domain"; then
-    remove_nginx_server_block "$prev_domain" "$tmp_nginx" "$tmp_nginx_next"
-    mv "$tmp_nginx_next" "$tmp_nginx"
-    info "移除历史 server block: $prev_domain"
-  fi
-done < <(awk '/^[[:space:]]*server_name[[:space:]]/ { gsub(/;/, ""); for (i = 2; i <= NF; i++) print $i }' "$NGINX_CONF")
-
-domain_already_targeted() {
-  local d="$1"
-  [[ "$d" == "$DEFAULT_CDN_DOMAIN" ]] && return 0
-  [[ "$d" == "$CDN_A" ]] && return 0
-  [[ "$d" == "$CDN_B" ]] && return 0
-  return 1
-}
-
-for prev_domain in "${PREV_DUAL_CDN_DOMAINS[@]}"; do
-  if ! domain_already_targeted "$prev_domain"; then
-    remove_nginx_server_block "$prev_domain" "$tmp_nginx" "$tmp_nginx_next"
-    mv "$tmp_nginx_next" "$tmp_nginx"
-    info "移除历史 CDN server block: $prev_domain"
-  fi
+for domain in "${PREV_DUAL_CDN_DOMAINS[@]}" "$CDN_A" "$CDN_B"; do
+  [[ -n "$domain" && "$domain" != "$DEFAULT_CDN_DOMAIN" ]] || continue
+  remove_nginx_server_block "$domain" "$tmp_nginx"
 done
-
-if [[ "$CDN_A" != "$DEFAULT_CDN_DOMAIN" ]]; then
-  remove_nginx_server_block "$CDN_A" "$tmp_nginx" "$tmp_nginx_next"
-  mv "$tmp_nginx_next" "$tmp_nginx"
-fi
-
-if [[ "$CDN_B" != "$DEFAULT_CDN_DOMAIN" && "$CDN_B" != "$CDN_A" ]]; then
-  remove_nginx_server_block "$CDN_B" "$tmp_nginx" "$tmp_nginx_next"
-  mv "$tmp_nginx_next" "$tmp_nginx"
-fi
 
 if [[ "$CDN_A" == "$CDN_B" && "$CDN_A" != "$DEFAULT_CDN_DOMAIN" ]]; then
   warn "CDN-A 与 CDN-B 域名相同，无法生成两个独立 server block，将只写入一个回落站"
@@ -266,13 +205,16 @@ fi
 
 echo "}" >> "$tmp_nginx"
 cat "$tmp_nginx" > "$NGINX_CONF"
-rm -f "$tmp_nginx" "$tmp_nginx_next"
+rm -f "$tmp_nginx"
 info "已为 CDN-A / CDN-B 写入独立回落站"
 
-{
-  [[ "$CDN_A" != "$DEFAULT_CDN_DOMAIN" ]] && echo "$CDN_A"
-  [[ "$CDN_B" != "$DEFAULT_CDN_DOMAIN" && "$CDN_B" != "$CDN_A" ]] && echo "$CDN_B"
-} > "$DUAL_CDN_STATE_FILE"
+: > "$DUAL_CDN_STATE_FILE"
+if [[ "$CDN_A" != "$DEFAULT_CDN_DOMAIN" ]]; then
+  echo "$CDN_A" >> "$DUAL_CDN_STATE_FILE"
+fi
+if [[ "$CDN_B" != "$DEFAULT_CDN_DOMAIN" && "$CDN_B" != "$CDN_A" ]]; then
+  echo "$CDN_B" >> "$DUAL_CDN_STATE_FILE"
+fi
 chmod 600 "$DUAL_CDN_STATE_FILE"
 
 nginx -t

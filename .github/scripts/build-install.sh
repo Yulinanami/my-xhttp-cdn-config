@@ -66,22 +66,20 @@ PROFILE
 build_one() {
   local variant="$1"
   local output="$2"
-  local tmp module
+  local module
 
-  tmp="$(mktemp)"
-  cat > "$tmp" <<'SCRIPTHEADER'
+  cat > "$output" <<'SCRIPTHEADER'
 #!/bin/bash
 set -e
 SCRIPTHEADER
 
   for module in "${MODULES[@]}"; do
-    append_with_includes "$ROOT_DIR/src/$module" >> "$tmp"
+    append_with_includes "$ROOT_DIR/src/$module" >> "$output"
     if [[ "$module" == "01-env.sh" ]]; then
-      append_profile "$variant" >> "$tmp"
+      append_profile "$variant" >> "$output"
     fi
   done
 
-  mv "$tmp" "$output"
   chmod +x "$output"
 }
 

@@ -20,12 +20,9 @@ command -v openssl >/dev/null 2>&1 || pkg_install openssl
 if ! command -v qrencode >/dev/null 2>&1; then
   info "安装二维码工具 qrencode..."
   if [[ "$OS_ID" == "alpine" ]]; then
-    QR_PACKAGE="libqrencode-tools"
+    pkg_install libqrencode-tools || warn "qrencode 安装失败，将跳过二维码输出"
   else
-    QR_PACKAGE="qrencode"
-  fi
-  if ! pkg_install "$QR_PACKAGE"; then
-    warn "qrencode 安装失败，将跳过二维码输出"
+    pkg_install qrencode || warn "qrencode 安装失败，将跳过二维码输出"
   fi
 fi
 
@@ -86,11 +83,7 @@ if [[ "$CDN_ECH_ENABLED" == true ]]; then
 fi
 
 info "生成 VLESS Encryption 密钥..."
-set +e
-VLESSENC_OUTPUT=$(xray vlessenc 2>&1)
-VLESSENC_CODE=$?
-set -e
-if [[ $VLESSENC_CODE -ne 0 ]] || ! echo "$VLESSENC_OUTPUT" | grep -qi "encryption"; then
+if ! VLESSENC_OUTPUT=$(xray vlessenc 2>&1) || ! grep -qi "encryption" <<< "$VLESSENC_OUTPUT"; then
   error "VLESS Encryption 密钥生成失败，请确保 Xray 版本支持 vlessenc。输出: $VLESSENC_OUTPUT"
 fi
 VLESSENC_ENCRYPTION=$(echo "$VLESSENC_OUTPUT" | awk -F'"' '/ML-KEM/{found=1} found && /"encryption"/{print $4; exit}')
@@ -101,7 +94,7 @@ if [[ "$IP_CHOICE" == "2" ]]; then
   VPS_IP=$(curl -6 -s --max-time 5 ip.sb)
   [[ -z "$VPS_IP" ]] && error "无法获取 IPv6 地址"
   VPS_IP_URI="[${VPS_IP}]"
-  VPS_IP_ENC=$(echo "$VPS_IP" | sed 's/:/%3A/g')
+  VPS_IP_ENC=${VPS_IP//:/%3A}
 else
   VPS_IP=$(curl -4 -s --max-time 5 ip.sb)
   [[ -z "$VPS_IP" ]] && error "无法获取 IPv4 地址"

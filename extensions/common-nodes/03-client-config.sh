@@ -20,6 +20,7 @@ LINE_HY2="hysteria2://${HY2_PASSWORD_ENC}@${HY2_SERVER_URI}:${HY2_PORT}/?sni=${R
 sed -i "/#${NODE_WS_TAG}\$/d" "$V2RAYN_FILE"
 sed -i "/#${NODE_HY2_TAG}\$/d" "$V2RAYN_FILE"
 printf '%s\n%s\n' "$LINE_WS" "$LINE_HY2" >> "$V2RAYN_FILE"
+chown "$(stat -c '%u:%g' "$USER_HOME")" "$V2RAYN_FILE"
 
 # 从已有 双向CDN 节点同步 ech-opts（若启用了 ECH）
 extract_ech_opts_block() {
@@ -36,10 +37,8 @@ extract_ech_opts_block() {
 
 build_common_nodes_block() {
   local source_file="$1"
-  local node_file ech_block
 
-  node_file=$(mktemp)
-  cat > "$node_file" <<EOF
+  cat <<EOF
   - name: ${NODE_WS_NAME}
     type: vless
     server: ${CDN_DOMAIN}
@@ -53,10 +52,9 @@ build_common_nodes_block() {
     client-fingerprint: chrome
 EOF
 
-  ech_block=$(extract_ech_opts_block "$source_file")
-  [[ -n "$ech_block" ]] && printf '%s\n' "$ech_block" >> "$node_file"
+  extract_ech_opts_block "$source_file"
 
-  cat >> "$node_file" <<EOF
+  cat <<EOF
     ws-opts:
       path: ${WS_PATH}
       headers:
@@ -71,29 +69,29 @@ EOF
     alpn:
       - h3
 EOF
-
-  printf '%s' "$node_file"
 }
 
-append_mihomo_node() {
+update_mihomo_file() {
   local source_file="$1"
-  local node_file="$2"
-  local node_name="$3"
-  local tmp_mihomo
+  local node_file tmp_file
 
-  tmp_mihomo=$(mktemp)
-  awk -v node_name="$node_name" -v node_file="$node_file" '
-    $0 == "  - name: " node_name      { skip=1; next }
-    skip && /^  - name: /             { skip=0 }
-    skip && /^proxy-groups:/          { skip=0 }
-    skip                              { next }
+  node_file=$(mktemp)
+  tmp_file=$(mktemp)
+  build_common_nodes_block "$source_file" > "$node_file"
+
+  awk -v ws_name="$NODE_WS_NAME" -v hy2_name="$NODE_HY2_NAME" -v node_file="$node_file" '
+    skip && !(/^  - name: / || /^proxy-groups:/) { next }
+    skip { skip=0 }
+
+    $0 == "  - name: " ws_name || $0 == "  - name: " hy2_name {
+      skip=1
+      next
+    }
 
     /^proxy-groups:/ {
       while ((getline line < node_file) > 0) print line
       print ""
       inserted=1
-      print
-      next
     }
 
     { print }
@@ -104,34 +102,13 @@ append_mihomo_node() {
         while ((getline line < node_file) > 0) print line
       }
     }
-  ' "$source_file" > "$tmp_mihomo"
-  chown "$(stat -c '%u:%g' "$USER_HOME")" "$tmp_mihomo"
-  chmod 644 "$tmp_mihomo"
-  mv "$tmp_mihomo" "$source_file"
+  ' "$source_file" > "$tmp_file"
+
+  cat "$tmp_file" > "$source_file"
+  rm -f "$node_file" "$tmp_file"
 }
 
-# 拆成单节点文件，便于按名称去重后分别追加
-split_node_file() {
-  local combined_file="$1"
-  local node_name="$2"
-  local out_file
-
-  out_file=$(mktemp)
-  awk -v node_name="$node_name" '
-    $0 == "  - name: " node_name { in_node = 1; print; next }
-    in_node && /^  - name: /     { exit }
-    in_node && /^$/              { exit }
-    in_node                      { print }
-  ' "$combined_file" > "$out_file"
-  printf '%s' "$out_file"
-}
-
-for MIHOMO_TARGET_FILE in "${MIHOMO_TARGET_FILES[@]}"; do
-  COMBINED_FILE=$(build_common_nodes_block "$MIHOMO_TARGET_FILE")
-  NODE_WS_FILE=$(split_node_file "$COMBINED_FILE" "$NODE_WS_NAME")
-  NODE_HY2_FILE=$(split_node_file "$COMBINED_FILE" "$NODE_HY2_NAME")
-  [[ -s "$NODE_WS_FILE" && -s "$NODE_HY2_FILE" ]] || error "生成 Mihomo 节点失败"
-  append_mihomo_node "$MIHOMO_TARGET_FILE" "$NODE_WS_FILE" "$NODE_WS_NAME"
-  append_mihomo_node "$MIHOMO_TARGET_FILE" "$NODE_HY2_FILE" "$NODE_HY2_NAME"
-  rm -f "$COMBINED_FILE" "$NODE_WS_FILE" "$NODE_HY2_FILE"
+for target_file in "$MIHOMO_FULL_FILE" "$MIHOMO_NODES_FILE"; do
+  update_mihomo_file "$target_file"
 done
+chown "$(stat -c '%u:%g' "$USER_HOME")" "$MIHOMO_FULL_FILE" "$MIHOMO_NODES_FILE"

@@ -38,38 +38,20 @@ echo ""
 echo -e "${YELLOW}[+] Mihomo 完整分流配置，已保存到 $USER_HOME/client-config-mihomo-full.yaml${NC}"
 echo -e "${YELLOW}[+] Mihomo 纯节点配置，已保存到 $USER_HOME/client-config-mihomo-nodes.yaml${NC}"
 echo ""
-info "V2rayN 请导入 $USER_HOME/client-config.txt"
-info "Mihomo 完整分流配置请导入 $USER_HOME/client-config-mihomo-full.yaml"
-info "Mihomo 纯节点配置请导入 $USER_HOME/client-config-mihomo-nodes.yaml"
-echo ""
 echo -e "${YELLOW}[+] 订阅链接（Ctrl Shift + C 复制）${NC}"
 echo "V2RayN / Shadowrocket 订阅: $V2RAYN_SUB_URL"
 echo "Mihomo 完整分流订阅: $MIHOMO_FULL_SUB_URL"
 echo "Mihomo 纯节点订阅: $MIHOMO_NODES_SUB_URL"
 info "订阅链接已保存到 $SUB_LINKS_FILE"
-info "订阅链接默认使用直连域名，适合客户端首次导入"
 echo ""
 
 if command -v qrencode >/dev/null 2>&1; then
-  save_subscription_qr_png "$V2RAYN_SUB_URL" "$V2RAYN_QR_FILE" && \
-    info "V2RayN / Shadowrocket 订阅二维码 PNG 已保存到 $V2RAYN_QR_FILE"
-  save_subscription_qr_png "$MIHOMO_FULL_SUB_URL" "$MIHOMO_FULL_QR_FILE" && \
-    info "Mihomo 完整分流订阅二维码 PNG 已保存到 $MIHOMO_FULL_QR_FILE"
-  save_subscription_qr_png "$MIHOMO_NODES_SUB_URL" "$MIHOMO_NODES_QR_FILE" && \
-    info "Mihomo 纯节点订阅二维码 PNG 已保存到 $MIHOMO_NODES_QR_FILE"
-  echo ""
-  print_subscription_qr "V2RayN / Shadowrocket" "$V2RAYN_SUB_URL"
-  print_subscription_qr "Mihomo 完整分流" "$MIHOMO_FULL_SUB_URL"
-  print_subscription_qr "Mihomo 纯节点" "$MIHOMO_NODES_SUB_URL"
+  output_subscription_qr "V2RayN / Shadowrocket" "$V2RAYN_SUB_URL" "$V2RAYN_QR_FILE"
+  output_subscription_qr "Mihomo 完整分流" "$MIHOMO_FULL_SUB_URL" "$MIHOMO_FULL_QR_FILE"
+  output_subscription_qr "Mihomo 纯节点" "$MIHOMO_NODES_SUB_URL" "$MIHOMO_NODES_QR_FILE"
 else
   warn "未检测到 qrencode，已跳过订阅二维码输出"
 fi
 
-echo -e "${YELLOW}[+] 建议: 在 Cloudflare 配置缓存规则绕过 XHTTP 路径${NC}"
-echo "  Cloudflare → 缓存 → Cache Rules → 创建缓存规则"
-echo "  选择「自定义筛选表达式」→ 点击「编辑表达式」→ 输入:"
-echo ""
+echo -e "${YELLOW}[+] Cloudflare 缓存绕过表达式${NC}"
 echo "  (http.host eq \"${CDN_DOMAIN}\") or (http.request.uri.path contains \"${XHTTP_PATH}\")"
-echo ""
-echo "  缓存资格设置为「绕过缓存」→ 部署"
-echo "  详细步骤请参考仓库的 docs/1.环境配置.md 文档"

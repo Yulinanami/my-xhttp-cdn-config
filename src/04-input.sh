@@ -5,7 +5,7 @@
 info "检测到系统: $PRETTY_NAME"
 
 if [[ -n "$SUDO_USER" && "$SUDO_USER" != "root" ]]; then
-  USER_HOME=$(eval echo "~$SUDO_USER")
+  USER_HOME=$(getent passwd "$SUDO_USER" | cut -d: -f6)
 else
   USER_HOME=$(getent passwd 1000 2>/dev/null | cut -d: -f6 || true)
 fi
@@ -39,6 +39,13 @@ echo "  2) IPv6"
 read -rp "请选择 IP 类型 [1/2] (默认 1): " IP_CHOICE
 IP_CHOICE=${IP_CHOICE:-1}
 
+normalize_proxy_origin() {
+  local url="$1"
+  [[ "$url" =~ ^https?:// ]] || url="https://${url}"
+  [[ "$url" =~ ^(https?)://([^/?#]+) ]] || return 1
+  printf '%s://%s' "${BASH_REMATCH[1]}" "${BASH_REMATCH[2]}"
+}
+
 echo ""
 echo -e "${YELLOW}[+] 主动探测回落方式${NC}"
 echo "  1) Nginx 反向代理网站（默认）"
@@ -48,30 +55,36 @@ read -rp "请选择回落方式 [1/2] (默认 1): " FALLBACK_CHOICE
 case "${FALLBACK_CHOICE:-1}" in
   1)
     FALLBACK_MODE="proxy"
-    read -rp "请输入 Reality 域名回落网站 [默认 https://www.stanford.edu]: " REALITY_FALLBACK_URL
-    REALITY_FALLBACK_URL=${REALITY_FALLBACK_URL:-https://www.stanford.edu}
-    read -rp "请输入 CDN 域名回落网站 [默认 https://www.harvard.edu]: " CDN_FALLBACK_URL
-    CDN_FALLBACK_URL=${CDN_FALLBACK_URL:-https://www.harvard.edu}
+    read -rp "请输入 Reality 域名回落网站 [默认 https://www.stanford.edu]: " REALITY_FALLBACK_ORIGIN
+    REALITY_FALLBACK_ORIGIN=$(normalize_proxy_origin "${REALITY_FALLBACK_ORIGIN:-https://www.stanford.edu}") ||
+      error "Reality 回落网站格式无效"
+    read -rp "请输入 CDN 域名回落网站 [默认 https://www.harvard.edu]: " CDN_FALLBACK_ORIGIN
+    CDN_FALLBACK_ORIGIN=$(normalize_proxy_origin "${CDN_FALLBACK_ORIGIN:-https://www.harvard.edu}") ||
+      error "CDN 回落网站格式无效"
+    [[ "$REALITY_FALLBACK_ORIGIN" != "$CDN_FALLBACK_ORIGIN" ]] ||
+      error "Reality 域名和 CDN 域名不能共用同一个回落网站"
+    REALITY_FALLBACK_HOST=${REALITY_FALLBACK_ORIGIN#*://}
+    CDN_FALLBACK_HOST=${CDN_FALLBACK_ORIGIN#*://}
     ;;
   2)
     FALLBACK_MODE="static"
     STATIC_SITE_DIR="${USER_HOME}/dist"
-    for STATIC_DOMAIN in "$REALITY_DOMAIN" "$CDN_DOMAIN"; do
-      mkdir -p "${STATIC_SITE_DIR}/${STATIC_DOMAIN}"
-      if [[ ! -f "${STATIC_SITE_DIR}/${STATIC_DOMAIN}/index.html" ]]; then
-        cat > "${STATIC_SITE_DIR}/${STATIC_DOMAIN}/index.html" <<'INITIAL_HTML_EOF'
+    for domain in "$REALITY_DOMAIN" "$CDN_DOMAIN"; do
+      mkdir -p "${STATIC_SITE_DIR}/${domain}"
+      if [[ ! -f "${STATIC_SITE_DIR}/${domain}/index.html" ]]; then
+        cat > "${STATIC_SITE_DIR}/${domain}/index.html" <<'INITIAL_HTML_EOF'
 @@include templates/default-index.html.tmpl
 INITIAL_HTML_EOF
         sed -i \
-          -e "s|<title>欢迎</title>|<title>${STATIC_DOMAIN}</title>|" \
-          -e "s|<h1>欢迎访问</h1>|<h1>${STATIC_DOMAIN}</h1>|" \
-          "${STATIC_SITE_DIR}/${STATIC_DOMAIN}/index.html"
-        chmod 644 "${STATIC_SITE_DIR}/${STATIC_DOMAIN}/index.html"
-        info "已生成初始静态页面：${STATIC_SITE_DIR}/${STATIC_DOMAIN}/index.html"
+          -e "s|<title>欢迎</title>|<title>${domain}</title>|" \
+          -e "s|<h1>欢迎访问</h1>|<h1>${domain}</h1>|" \
+          "${STATIC_SITE_DIR}/${domain}/index.html"
+        chmod 644 "${STATIC_SITE_DIR}/${domain}/index.html"
+        info "已生成 ${STATIC_SITE_DIR}/${domain}/index.html"
       fi
       chown "$(stat -c '%u:%g' "$USER_HOME")" \
-        "${STATIC_SITE_DIR}/${STATIC_DOMAIN}" \
-        "${STATIC_SITE_DIR}/${STATIC_DOMAIN}/index.html"
+        "${STATIC_SITE_DIR}/${domain}" \
+        "${STATIC_SITE_DIR}/${domain}/index.html"
     done
     echo ""
     echo "Reality 页面：${STATIC_SITE_DIR}/${REALITY_DOMAIN}/index.html"
@@ -107,33 +120,6 @@ if [[ "$FEATURE_CDN_ECH" == true ]]; then
     CDN_ECH_QUERY="cloudflare-ech.com+https://223.5.5.5/dns-query"
   else
     CDN_ECH_QUERY=""
-  fi
-fi
-
-normalize_proxy_origin() {
-  local url="$1"
-
-  [[ "$url" =~ ^https?:// ]] || url="https://${url}"
-  [[ "$url" =~ ^(https?)://([^/?#]+) ]] || return 1
-  printf '%s://%s' "${BASH_REMATCH[1]}" "${BASH_REMATCH[2]}"
-}
-
-extract_host_from_url() {
-  printf '%s' "${1#*://}"
-}
-
-if [[ "$FALLBACK_MODE" == "proxy" ]]; then
-  REALITY_FALLBACK_ORIGIN=$(normalize_proxy_origin "$REALITY_FALLBACK_URL") || error "Reality 回落网站格式无效"
-  CDN_FALLBACK_ORIGIN=$(normalize_proxy_origin "$CDN_FALLBACK_URL") || error "CDN 回落网站格式无效"
-  REALITY_FALLBACK_HOST=$(extract_host_from_url "$REALITY_FALLBACK_ORIGIN")
-  CDN_FALLBACK_HOST=$(extract_host_from_url "$CDN_FALLBACK_ORIGIN")
-  [[ "$REALITY_FALLBACK_ORIGIN" != "$CDN_FALLBACK_ORIGIN" ]] || error "Reality 域名和 CDN 域名不能共用同一个回落网站"
-
-  if [[ "$REALITY_FALLBACK_URL" != "$REALITY_FALLBACK_ORIGIN" ]]; then
-    warn "Reality 回落网站已忽略路径部分，实际反代目标: $REALITY_FALLBACK_ORIGIN"
-  fi
-  if [[ "$CDN_FALLBACK_URL" != "$CDN_FALLBACK_ORIGIN" ]]; then
-    warn "CDN 回落网站已忽略路径部分，实际反代目标: $CDN_FALLBACK_ORIGIN"
   fi
 fi
 
