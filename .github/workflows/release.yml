@@ -26,8 +26,8 @@ jobs:
       - name: Build dual IP extension
         run: bash .github/scripts/build-dual-ip.sh
 
-      - name: Build common nodes extension
-        run: bash .github/scripts/build-common-nodes.sh
+      - name: Build QUIC extension
+        run: bash .github/scripts/build-quic.sh
 
       - name: Upload workflow artifacts
         uses: actions/upload-artifact@v4
@@ -38,7 +38,7 @@ jobs:
             dist/install-xpadding.sh
             dist/add-dual-cdn.sh
             dist/add-dual-ip.sh
-            dist/add-common-nodes.sh
+            dist/add-quic.sh
 
       - name: Publish GitHub Release
         if: startsWith(github.ref, 'refs/tags/')
@@ -49,4 +49,4 @@ jobs:
             dist/install-xpadding.sh
             dist/add-dual-cdn.sh
             dist/add-dual-ip.sh
-            dist/add-common-nodes.sh
+            dist/add-quic.sh

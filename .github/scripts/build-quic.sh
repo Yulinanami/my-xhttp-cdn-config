@@ -12,7 +12,7 @@ MODULES=(
 )
 
 OUT_DIR="${OUT_DIR:-$ROOT_DIR/dist}"
-OUTPUT="$OUT_DIR/add-common-nodes.sh"
+OUTPUT="$OUT_DIR/add-quic.sh"
 mkdir -p "$OUT_DIR"
 
 cat > "$OUTPUT" <<'SCRIPTHEADER'

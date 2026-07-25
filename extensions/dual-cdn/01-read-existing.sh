@@ -37,6 +37,11 @@ VPS_SERVER=$(extract_uri_server "$REALITY_LINE")
 [[ -n "$REALITY_DOMAIN" ]] || error "读取 Reality 域名失败"
 [[ -n "$VPS_SERVER" ]] || error "读取 VPS 地址失败"
 
+if [[ -n "$ECH_PARAM" ]]; then
+  read -rp "是否复用原 CDN 节点的 ECH [y/N]: "
+  [[ "${REPLY,,}" == "y" ]] || ECH_PARAM=""
+fi
+
 [[ -f /etc/xhttp-cdn/fallback.env ]] || error "未找到主脚本回落配置，请重新运行主脚本"
 # shellcheck disable=SC1090
 . /etc/xhttp-cdn/fallback.env

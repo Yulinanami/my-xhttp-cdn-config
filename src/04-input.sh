@@ -48,25 +48,12 @@ normalize_proxy_origin() {
 
 echo ""
 echo -e "${YELLOW}[+] 主动探测回落方式${NC}"
-echo "  1) Nginx 反向代理网站（默认）"
-echo "  2) 使用自己的静态页面"
+echo "  1) 使用自己的 index.html（默认）"
+echo "  2) Nginx 反向代理网站"
 read -rp "请选择回落方式 [1/2] (默认 1): " FALLBACK_CHOICE
 
 case "${FALLBACK_CHOICE:-1}" in
   1)
-    FALLBACK_MODE="proxy"
-    read -rp "请输入 Reality 域名回落网站 [默认 https://www.stanford.edu]: " REALITY_FALLBACK_ORIGIN
-    REALITY_FALLBACK_ORIGIN=$(normalize_proxy_origin "${REALITY_FALLBACK_ORIGIN:-https://www.stanford.edu}") ||
-      error "Reality 回落网站格式无效"
-    read -rp "请输入 CDN 域名回落网站 [默认 https://www.harvard.edu]: " CDN_FALLBACK_ORIGIN
-    CDN_FALLBACK_ORIGIN=$(normalize_proxy_origin "${CDN_FALLBACK_ORIGIN:-https://www.harvard.edu}") ||
-      error "CDN 回落网站格式无效"
-    [[ "$REALITY_FALLBACK_ORIGIN" != "$CDN_FALLBACK_ORIGIN" ]] ||
-      error "Reality 域名和 CDN 域名不能共用同一个回落网站"
-    REALITY_FALLBACK_HOST=${REALITY_FALLBACK_ORIGIN#*://}
-    CDN_FALLBACK_HOST=${CDN_FALLBACK_ORIGIN#*://}
-    ;;
-  2)
     FALLBACK_MODE="static"
     STATIC_SITE_DIR="${USER_HOME}/dist"
     for domain in "$REALITY_DOMAIN" "$CDN_DOMAIN"; do
@@ -94,6 +81,19 @@ INITIAL_HTML_EOF
     [[ -f "${STATIC_SITE_DIR}/${REALITY_DOMAIN}/index.html" ]] || error "未找到 Reality 域名页面"
     [[ -f "${STATIC_SITE_DIR}/${CDN_DOMAIN}/index.html" ]] || error "未找到 CDN 域名页面"
     ;;
+  2)
+    FALLBACK_MODE="proxy"
+    read -rp "请输入 Reality 域名回落网站 [默认 https://www.stanford.edu]: " REALITY_FALLBACK_ORIGIN
+    REALITY_FALLBACK_ORIGIN=$(normalize_proxy_origin "${REALITY_FALLBACK_ORIGIN:-https://www.stanford.edu}") ||
+      error "Reality 回落网站格式无效"
+    read -rp "请输入 CDN 域名回落网站 [默认 https://www.harvard.edu]: " CDN_FALLBACK_ORIGIN
+    CDN_FALLBACK_ORIGIN=$(normalize_proxy_origin "${CDN_FALLBACK_ORIGIN:-https://www.harvard.edu}") ||
+      error "CDN 回落网站格式无效"
+    [[ "$REALITY_FALLBACK_ORIGIN" != "$CDN_FALLBACK_ORIGIN" ]] ||
+      error "Reality 域名和 CDN 域名不能共用同一个回落网站"
+    REALITY_FALLBACK_HOST=${REALITY_FALLBACK_ORIGIN#*://}
+    CDN_FALLBACK_HOST=${CDN_FALLBACK_ORIGIN#*://}
+    ;;
   *)
     error "回落方式只能选择 1 或 2"
     ;;
@@ -111,14 +111,12 @@ fi
 if [[ "$FEATURE_CDN_ECH" == true ]]; then
   echo ""
   echo -e "${YELLOW}[+] CDN ECH（作用于 CDN-TLS）${NC}"
-  read -rp "是否启用 CDN ECH [y/N]: " CDN_ECH_INPUT
-  case "$CDN_ECH_INPUT" in
-    [Yy]|[Yy][Ee][Ss]) CDN_ECH_ENABLED=true ;;
-    *) CDN_ECH_ENABLED=false ;;
-  esac
-  if [[ "$CDN_ECH_ENABLED" == true ]]; then
+  read -rp "是否启用 CDN ECH [y/N]: "
+  if [[ "${REPLY,,}" == "y" ]]; then
+    CDN_ECH_ENABLED=true
     CDN_ECH_QUERY="cloudflare-ech.com+https://223.5.5.5/dns-query"
   else
+    CDN_ECH_ENABLED=false
     CDN_ECH_QUERY=""
   fi
 fi

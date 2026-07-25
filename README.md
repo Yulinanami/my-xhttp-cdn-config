@@ -42,7 +42,7 @@
 4. [ECH配置.md](./docs/4.ECH配置.md)，给 CDN-TLS 节点启用 ECH，按此文档补充客户端配置。
 5. [拓展-上下行不同CDN.md](./docs/6.拓展-上下行不同CDN.md)，可选扩展：上行 CDN-A / 下行 CDN-B。
 6. [拓展-上下行IPv4IPv6.md](./docs/7.拓展-上下行IPv4IPv6.md)，可选扩展：上行 IPv4 / 下行 IPv6。
-7. [拓展-常用节点.md](./docs/8.拓展-常用节点.md)，可选扩展：VLESS+WS+TLS+CDN / Hysteria2 直连。
+7. [拓展-QUIC添加.md](./docs/8.拓展-QUIC添加.md)，可选扩展：VLESS+XHTTP+TLS（H3）/ Hysteria2 直连。
 8. [卸载.md](./docs/9.卸载.md)，卸载指令，用于卸载前面搭建 Xray、Nginx、ACME 和 Hysteria2。
 9. [客户端模板.txt](./客户端模板.txt)，复制到 V2rayN，替换 `YOUR_*` 占位符后使用。
 10. [客户端模板-mihomo.yaml](./客户端模板-mihomo.yaml)，Mihomo内核客户端的配置文件，替换 `YOUR_*` 占位符后导入。
@@ -85,9 +85,9 @@ bash ~/install.sh
 
 ---
 
-### 带 xpadding 和 ECH 的 XHTTP
+### 带 xpadding 的 XHTTP（ECH 可选）
 
-> **提示**：配置 xpadding 和 ECH 以绕过 CDN 的阻断
+> **提示**：xpadding 默认开启；ECH 可选，默认关闭
 > **注意**：需要 Xray 内核版本≥`26.2.6`，Mihomo 内核版本≥`1.19.24`。
 
 ```bash
@@ -128,7 +128,7 @@ curl -fsSL https://github.com/Yulinanami/my-xhttp-cdn-config/releases/latest/dow
 bash ~/add-dual-cdn.sh
 ```
 
-- 同步：`xpadding / ECH`
+- 同步：`xpadding`；ECH 可选复用，默认关闭
 - 输入：`CDN-A / CDN-B`
 - 回落：每个新增 CDN 域名单独配置
 
@@ -154,12 +154,14 @@ bash ~/add-dual-ip.sh
 - 输入：`IPv4 Reality 域名 / IPv6 Reality 域名`
 - 回落：每个新增 Reality 域名单独配置
 
-#### VLESS+WS+TLS+CDN | Hysteria2 直连
+#### VLESS+XHTTP+TLS（H3）| Hysteria2 直连
+
+Debian / Ubuntu：
 
 ```bash
 sudo -i
-curl -fsSL https://github.com/Yulinanami/my-xhttp-cdn-config/releases/latest/download/add-common-nodes.sh -o ~/add-common-nodes.sh
-bash ~/add-common-nodes.sh
+curl -fsSL https://github.com/Yulinanami/my-xhttp-cdn-config/releases/latest/download/add-quic.sh -o ~/add-quic.sh
+bash ~/add-quic.sh
 ```
 
 Alpine Linux：
@@ -167,13 +169,15 @@ Alpine Linux：
 ```sh
 doas -s
 apk add --no-cache bash curl
-curl -fsSL https://github.com/Yulinanami/my-xhttp-cdn-config/releases/latest/download/add-common-nodes.sh -o ~/add-common-nodes.sh
-bash ~/add-common-nodes.sh
+curl -fsSL https://github.com/Yulinanami/my-xhttp-cdn-config/releases/latest/download/add-quic.sh -o ~/add-quic.sh
+bash ~/add-quic.sh
 ```
 
-- 复用：主脚本的 `CDN 域名 / Reality 域名 / UUID / 证书 / 回落方式`
-- 输入：`WebSocket 路径 / Hysteria2 密码`
-- 端口：VLESS 使用 TCP 443；Hysteria2 使用 UDP 443，需在防火墙与安全组放行
+- 复用：主脚本的 `Reality 域名 / CDN 域名 / UUID / VLESS Encryption / XHTTP Path / 证书 / 回落方式`；ECH 可选复用，默认关闭
+- 模式：默认分开端口，也可以选择共用端口
+- 分开端口：XHTTP H3 默认 UDP 443，由 Nginx 处理；Hysteria2 默认 UDP 8443
+- 共用端口：两者默认 UDP 443，由 Hysteria2 处理 XHTTP H3 的 QUIC/TLS
+- XHTTP H3：连接地址使用 VPS IP 时直连，改成 CDN 域名或 CDN IP 并使用端口 443 时经过 CDN
 
 ---
 
@@ -199,7 +203,7 @@ bash ~/add-common-nodes.sh
 bash .github/scripts/build-install.sh
 bash .github/scripts/build-dual-cdn.sh
 bash .github/scripts/build-dual-ip.sh
-bash .github/scripts/build-common-nodes.sh
+bash .github/scripts/build-quic.sh
 ```
 
 会在 `dist/` 目录生成：
@@ -208,7 +212,7 @@ bash .github/scripts/build-common-nodes.sh
 - `install-xpadding.sh`
 - `add-dual-cdn.sh`
 - `add-dual-ip.sh`
-- `add-common-nodes.sh`
+- `add-quic.sh`
 
 ---
 

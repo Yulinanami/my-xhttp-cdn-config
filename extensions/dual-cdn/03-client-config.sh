@@ -5,15 +5,11 @@
 NODE_NAME="上行 xhttp+TLS+CDN-A | 下行 xhttp+TLS+CDN-B"
 NODE_TAG="%E4%B8%8A%E8%A1%8C%20xhttp%2BTLS%2BCDN-A%20%7C%20%E4%B8%8B%E8%A1%8C%20xhttp%2BTLS%2BCDN-B"
 
-BASE_EXTRA_JSON=""
-NESTED_EXTRA_FIELD=""
 if [[ -n "$BASE_EXTRA_ENC" ]]; then
   BASE_EXTRA_JSON=$(urldecode "$BASE_EXTRA_ENC")
   NESTED_EXTRA_FIELD=",\"extra\":${BASE_EXTRA_JSON}"
 fi
 
-ECH_TLS_JSON=""
-ECH_URI_PARAM=""
 if [[ -n "$ECH_PARAM" ]]; then
   ECH_TLS_JSON=",\"echConfigList\":\"$(json_escape "$(urldecode "$ECH_PARAM")")\""
   ECH_URI_PARAM="&ech=${ECH_PARAM}"
@@ -40,7 +36,7 @@ update_mihomo_file() {
 
   node_file=$(mktemp)
   tmp_file=$(mktemp)
-  awk -v node_name="$NODE_NAME" -v cdn_a="$CDN_A" '
+  awk -v node_name="$NODE_NAME" -v cdn_a="$CDN_A" -v ech_param="$ECH_PARAM" '
     /^  - name: xhttp\+TLS 双向 CDN$/ {
       in_node=1
       print "  - name: " node_name
@@ -48,6 +44,9 @@ update_mihomo_file() {
     }
     in_node && (/^  - name: / || /^proxy-groups:/) { exit }
     !in_node { next }
+    ech_param == "" && /^    ech-opts:/ { skip_ech=1; next }
+    skip_ech && /^      / { next }
+    skip_ech { skip_ech=0 }
     /^    server:/     { print "    server: " cdn_a; next }
     /^    servername:/ { print "    servername: " cdn_a; next }
     /^      host:/     { print "      host: " cdn_a; next }

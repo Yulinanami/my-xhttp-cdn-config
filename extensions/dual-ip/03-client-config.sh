@@ -7,8 +7,6 @@ NODE_V6_UP_NAME="上行 xhttp+Reality IPv6 | 下行 xhttp+Reality IPv4"
 NODE_V4_UP_TAG="%E4%B8%8A%E8%A1%8C%20xhttp%2BReality%20IPv4%20%7C%20%E4%B8%8B%E8%A1%8C%20xhttp%2BReality%20IPv6"
 NODE_V6_UP_TAG="%E4%B8%8A%E8%A1%8C%20xhttp%2BReality%20IPv6%20%7C%20%E4%B8%8B%E8%A1%8C%20xhttp%2BReality%20IPv4"
 
-BASE_EXTRA_JSON=""
-NESTED_EXTRA_FIELD=""
 if [[ -n "$BASE_EXTRA_ENC" ]]; then
   BASE_EXTRA_JSON=$(urldecode "$BASE_EXTRA_ENC")
   NESTED_EXTRA_FIELD=",\"extra\":${BASE_EXTRA_JSON}"

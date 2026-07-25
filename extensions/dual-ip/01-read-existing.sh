@@ -26,7 +26,6 @@ SHORT_ID=$(get_query_param "$BASE_LINE" "sid" || true)
 BASE_EXTRA_ENC=$(get_query_param "$BASE_LINE" "extra" || true)
 
 CDN_LINE=$(grep -F '#xhttp%2Btls%20%E5%8F%8C%E5%90%91CDN' "$V2RAYN_FILE" | head -n1 | tr -d '\r' || true)
-DEFAULT_CDN_DOMAIN=""
 if [[ -n "$CDN_LINE" ]]; then
   DEFAULT_CDN_DOMAIN=$(get_query_param "$CDN_LINE" "host" || true)
   [[ -n "$DEFAULT_CDN_DOMAIN" ]] || DEFAULT_CDN_DOMAIN=$(get_query_param "$CDN_LINE" "sni" || true)
@@ -46,8 +45,6 @@ fi
 
 [[ "$FALLBACK_MODE" == "proxy" || "$FALLBACK_MODE" == "static" ]] || error "主脚本回落方式无效，请重新运行主脚本"
 
-DEFAULT_IPV4=""
-DEFAULT_IPV6=""
 if [[ "$BASE_SERVER" == *:* ]]; then
   DEFAULT_IPV6="$BASE_SERVER"
 else

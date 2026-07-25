@@ -27,7 +27,8 @@ install_nginx() {
     --with-stream \
     --with-stream_ssl_module \
     --with-stream_ssl_preread_module \
-    --with-http_v2_module
+    --with-http_v2_module \
+    --with-http_v3_module
 
   make -j"$(getconf _NPROCESSORS_ONLN 2>/dev/null || echo 1)"
   make install
@@ -94,19 +95,10 @@ SERVICEEOF
   echo ""
 }
 
-if command -v nginx &>/dev/null; then
-  CURRENT_VER=$(nginx -v 2>&1 | grep -oP '[\d.]+')
-  if [[ "$CURRENT_VER" == "$NGINX_VER" ]]; then
-    info "Nginx ${NGINX_VER} 已安装，跳过编译"
-  else
-    warn "检测到已安装 Nginx ${CURRENT_VER}，目标版本为 ${NGINX_VER}"
-    read -rp "是否重新编译安装 Nginx ${NGINX_VER}？[y/N] " answer
-    if [[ "$answer" =~ ^[Yy]$ ]]; then
-      install_nginx
-    else
-      info "保留当前 Nginx ${CURRENT_VER}，跳过编译"
-    fi
-  fi
+if command -v nginx >/dev/null 2>&1 &&
+   nginx -v 2>&1 | grep -Fq "nginx/${NGINX_VER}" &&
+   nginx -V 2>&1 | grep -q -- '--with-http_v3_module'; then
+  info "Nginx ${NGINX_VER} 已安装，跳过编译"
 else
   install_nginx
 fi

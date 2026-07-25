@@ -49,7 +49,7 @@ PROFILE
     xpadding)
       cat <<'PROFILE'
 # ==================================================
-# 功能开关：xpadding + ECH 版
+# 功能开关：xpadding 版
 # ==================================================
 
 FEATURE_XPADDING=true

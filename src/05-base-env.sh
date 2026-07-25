@@ -60,9 +60,6 @@ XHTTP_PATH="/$(echo "$UUID2" | tr -d '-' | cut -c1-8)"
 
 XHTTP_PADDING_PLACEMENT="queryInHeader"
 XHTTP_PADDING_METHOD="tokenish"
-XRAY_XHTTP_PADDING_JSON=""
-CDN_ECH_URI_PARAM=""
-CDN_ECH_TLS_SETTINGS_EXTRA=""
 
 if [[ "$FEATURE_XPADDING" == true ]]; then
   XRAY_XHTTP_PADDING_JSON=$(cat <<EOF
