@@ -109,8 +109,9 @@ INITIAL_HTML_EOF
 
   prepare_static_site "$CDN_A"
   [[ "$CDN_B" == "$CDN_A" ]] || prepare_static_site "$CDN_B"
-  echo "CDN-A 页面：${STATIC_SITE_DIR}/${CDN_A}/index.html"
-  echo "CDN-B 页面：${STATIC_SITE_DIR}/${CDN_B}/index.html"
+  echo "请将 dist 文件夹上传到 /var/www/"
+  echo "CDN-A 页面：dist/${CDN_A}/index.html"
+  echo "CDN-B 页面：dist/${CDN_B}/index.html"
   read -rp "确认各域名页面准备完成后按 Enter 继续: "
   [[ -f "${STATIC_SITE_DIR}/${CDN_A}/index.html" ]] || error "未找到 CDN-A 页面"
   [[ -f "${STATIC_SITE_DIR}/${CDN_B}/index.html" ]] || error "未找到 CDN-B 页面"

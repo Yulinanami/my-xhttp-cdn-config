@@ -55,7 +55,7 @@ read -rp "请选择回落方式 [1/2] (默认 1): " FALLBACK_CHOICE
 case "${FALLBACK_CHOICE:-1}" in
   1)
     FALLBACK_MODE="static"
-    STATIC_SITE_DIR="${USER_HOME}/dist"
+    STATIC_SITE_DIR="/var/www/dist"
     for domain in "$REALITY_DOMAIN" "$CDN_DOMAIN"; do
       mkdir -p "${STATIC_SITE_DIR}/${domain}"
       if [[ ! -f "${STATIC_SITE_DIR}/${domain}/index.html" ]]; then
@@ -74,9 +74,10 @@ INITIAL_HTML_EOF
         "${STATIC_SITE_DIR}/${domain}/index.html"
     done
     echo ""
-    echo "Reality 页面：${STATIC_SITE_DIR}/${REALITY_DOMAIN}/index.html"
-    echo "CDN 页面：    ${STATIC_SITE_DIR}/${CDN_DOMAIN}/index.html"
-    echo "可用 SingleFile 抓取网页后分别上传。"
+    echo "请将 dist 文件夹上传到 /var/www/"
+    echo "Reality 页面：dist/${REALITY_DOMAIN}/index.html"
+    echo "CDN 页面：    dist/${CDN_DOMAIN}/index.html"
+    echo "可用 SingleFile 抓取网页。"
     read -rp "确认两个域名的页面准备完成后按 Enter 继续: "
     [[ -f "${STATIC_SITE_DIR}/${REALITY_DOMAIN}/index.html" ]] || error "未找到 Reality 域名页面"
     [[ -f "${STATIC_SITE_DIR}/${CDN_DOMAIN}/index.html" ]] || error "未找到 CDN 域名页面"

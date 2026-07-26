@@ -61,7 +61,7 @@
 > 4. 网络 → gRPC → 已开启
 > 5. 缓存规则（建议） → 将 XHTTP 路径设为绕过缓存，具体步骤请参考Github仓库的 [环境配置.md](./docs/1.环境配置.md)。
 
-每个入口域名使用独立的 `dist/<域名>/index.html`；可用 [SingleFile](https://chromewebstore.google.com/detail/singlefile/mpiodijhokgodhhofbcjdecpffjipkle?hl=zh-CN&utm_source=ext_sidebar) 抓取网页。
+将 `dist` 文件夹上传到 `/var/www/`，每个入口域名使用独立的 `/var/www/dist/<域名>/index.html`；可用 [SingleFile](https://chromewebstore.google.com/detail/singlefile/mpiodijhokgodhhofbcjdecpffjipkle?hl=zh-CN&utm_source=ext_sidebar) 抓取网页。
 
 在 VPS (Debian/Ubuntu) 上执行：
 

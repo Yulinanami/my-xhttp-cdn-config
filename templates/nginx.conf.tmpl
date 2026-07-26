@@ -1,4 +1,4 @@
-user root;
+user nobody $(id -gn nobody);
 worker_processes auto;
 
 error_log /usr/local/nginx/logs/error.log notice;
@@ -47,11 +47,6 @@ http {
     map \$http_forwarded \$proxy_add_forwarded {
         default "\$proxy_forwarded_elem";
     }
-    map \$http_upgrade \$connection_upgrade {
-        default upgrade;
-        ""      close;
-    }
-
     server {
         listen       8003 ssl;
         http2        on;

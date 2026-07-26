@@ -118,8 +118,9 @@ INITIAL_HTML_EOF
 
   prepare_static_site "$REALITY_DOMAIN_V4"
   prepare_static_site "$REALITY_DOMAIN_V6"
-  echo "IPv4 Reality 页面：${STATIC_SITE_DIR}/${REALITY_DOMAIN_V4}/index.html"
-  echo "IPv6 Reality 页面：${STATIC_SITE_DIR}/${REALITY_DOMAIN_V6}/index.html"
+  echo "请将 dist 文件夹上传到 /var/www/"
+  echo "IPv4 Reality 页面：dist/${REALITY_DOMAIN_V4}/index.html"
+  echo "IPv6 Reality 页面：dist/${REALITY_DOMAIN_V6}/index.html"
   read -rp "确认两个域名的页面准备完成后按 Enter 继续: "
   [[ -f "${STATIC_SITE_DIR}/${REALITY_DOMAIN_V4}/index.html" ]] || error "未找到 IPv4 Reality 页面"
   [[ -f "${STATIC_SITE_DIR}/${REALITY_DOMAIN_V6}/index.html" ]] || error "未找到 IPv6 Reality 页面"
