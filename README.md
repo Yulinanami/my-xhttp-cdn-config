@@ -65,6 +65,18 @@
 
 在 VPS (Debian/Ubuntu) 上执行：
 
+### 配置文件启动
+
+```bash
+sudo -i
+curl -fsSL https://github.com/Yulinanami/my-xhttp-cdn-config/releases/latest/download/config.env -o ~/config.env
+curl -fsSL https://github.com/Yulinanami/my-xhttp-cdn-config/releases/latest/download/install-config.sh -o ~/install-config.sh
+nano ~/config.env
+bash ~/install-config.sh ~/config.env
+```
+
+`config.env` 中开启的扩展会自动下载并运行；开启项缺少配置时会直接退出并提示变量名。
+
 ### 普通 XHTTP + TLS + CDN
 
 > **注意**：需要 Mihomo 内核版本≥1.19.23。
@@ -233,6 +245,8 @@ bash .github/scripts/build-hysteria2.sh
 
 - `install.sh`
 - `install-xpadding.sh`
+- `install-config.sh`
+- `config.env`
 - `add-dual-cdn.sh`
 - `add-dual-ip.sh`
 - `add-quic.sh`
