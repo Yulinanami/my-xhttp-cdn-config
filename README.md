@@ -177,7 +177,7 @@ bash ~/add-quic.sh
 - 模式：默认分开端口，也可以选择共用端口
 - 分开端口：XHTTP H3 默认 UDP 443，由 Nginx 处理；Hysteria2 默认 UDP 8443
 - 共用端口：两者默认 UDP 443，由 Hysteria2 处理 XHTTP H3 的 QUIC/TLS
-- XHTTP H3：连接地址使用 VPS IP 时直连，改成 CDN 域名或 CDN IP 并使用端口 443 时经过 CDN
+- XHTTP H3：客户端配置地址使用 VPS IP 时直连，改成 CDN 域名或 CDN IP 并使用端口 443 时经过 CDN，如果 XHTTP H3 使用 8443 端口，要走 CDN 的话需要让 CDN 回源到 VPS 的 443 端口
 
 ---
 

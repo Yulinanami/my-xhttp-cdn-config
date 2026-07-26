@@ -15,7 +15,6 @@ XRAY_CONF="/usr/local/etc/xray/config.json"
 info "XHTTP H3 复用 Xray 127.0.0.1:8001 入站"
 
 sed -i \
-  -e '/^[[:space:]]*# BEGIN common-nodes h3$/,/^[[:space:]]*# END common-nodes h3$/d' \
   -e '/^[[:space:]]*# BEGIN quic xhttp$/,/^[[:space:]]*# END quic xhttp$/d' \
   "$NGINX_CONF"
 
@@ -133,14 +132,14 @@ acme.sh --install-cert -d "$REALITY_DOMAIN" --ecc \
   --fullchain-file /etc/ssl/private/fullchain.cer \
   --reloadcmd "${HYSTERIA_RESTART_CMD}; ${NGINX_RESTART_CMD}"
 
-install -d -m 700 "$COMMON_STATE_DIR"
-cat > "$COMMON_STATE_FILE" <<EOF
+install -d -m 700 "$QUIC_STATE_DIR"
+cat > "$QUIC_STATE_FILE" <<EOF
 QUIC_MODE=${QUIC_MODE}
 XHTTP_H3_PORT=${XHTTP_H3_PORT}
 HY2_PORT=${HY2_PORT}
 HY2_PASSWORD=${HY2_PASSWORD}
 EOF
-chmod 600 "$COMMON_STATE_FILE"
+chmod 600 "$QUIC_STATE_FILE"
 
 nginx -t
 xray -test -config "$XRAY_CONF"

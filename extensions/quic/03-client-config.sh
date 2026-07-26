@@ -18,7 +18,7 @@ sed -i "/#${NODE_HY2_TAG}\$/d" "$V2RAYN_FILE"
 printf '%s\n%s\n' "$LINE_XHTTP_H3" "$LINE_HY2" >> "$V2RAYN_FILE"
 chown "$(stat -c '%u:%g' "$USER_HOME")" "$V2RAYN_FILE"
 
-build_common_nodes_block() {
+build_quic_nodes_block() {
   cat <<EOF
   - name: ${NODE_XHTTP_H3_NAME}
     type: vless
@@ -84,7 +84,7 @@ update_mihomo_file() {
 
   node_file=$(mktemp)
   tmp_file=$(mktemp)
-  build_common_nodes_block > "$node_file"
+  build_quic_nodes_block > "$node_file"
 
   awk -v h3_name="$NODE_XHTTP_H3_NAME" \
       -v hy2_name="$NODE_HY2_NAME" \

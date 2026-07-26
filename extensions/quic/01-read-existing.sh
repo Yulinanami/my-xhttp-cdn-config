@@ -65,14 +65,12 @@ case "$FALLBACK_MODE" in
 esac
 
 # 读取历史扩展参数，保证重复运行时保持一致
-COMMON_STATE_DIR="/etc/xhttp-cdn"
-COMMON_STATE_FILE="${COMMON_STATE_DIR}/common-nodes.env"
-if [[ -f "$COMMON_STATE_FILE" ]]; then
+QUIC_STATE_DIR="/etc/xhttp-cdn"
+QUIC_STATE_FILE="${QUIC_STATE_DIR}/quic.env"
+if [[ -f "$QUIC_STATE_FILE" ]]; then
   # shellcheck disable=SC1090
-  . "$COMMON_STATE_FILE"
+  . "$QUIC_STATE_FILE"
 fi
-
-SAVED_QUIC_MODE="${QUIC_MODE:-separate}"
 
 echo -e "${YELLOW}[+] QUIC 端口模式${NC}"
 echo "  1) 分开端口（默认，Nginx 处理 XHTTP H3）"
@@ -83,25 +81,32 @@ QUIC_CHOICE=${QUIC_CHOICE:-1}
 case "$QUIC_CHOICE" in
   1)
     QUIC_MODE="separate"
-    if [[ "$SAVED_QUIC_MODE" == "separate" ]]; then
-      DEFAULT_XHTTP_H3_PORT="${XHTTP_H3_PORT:-443}"
-      DEFAULT_HY2_PORT="${HY2_PORT:-8443}"
-    else
-      DEFAULT_XHTTP_H3_PORT=443
-      DEFAULT_HY2_PORT=8443
-    fi
-
-    read -rp "请输入 XHTTP H3 UDP 端口 [默认 ${DEFAULT_XHTTP_H3_PORT}]: " XHTTP_H3_PORT
-    XHTTP_H3_PORT=${XHTTP_H3_PORT:-$DEFAULT_XHTTP_H3_PORT}
-    read -rp "请输入 hysteria2 UDP 端口 [默认 ${DEFAULT_HY2_PORT}]: " HY2_PORT
-    HY2_PORT=${HY2_PORT:-$DEFAULT_HY2_PORT}
+    echo "  1) 443"
+    echo "  2) 8443"
+    read -rp "请选择 XHTTP H3 UDP 端口 [1/2] (默认 1): " XHTTP_H3_PORT
+    case "${XHTTP_H3_PORT:-1}" in
+      1) XHTTP_H3_PORT=443 ;;
+      2) XHTTP_H3_PORT=8443 ;;
+      *) error "XHTTP H3 端口只能选择 1 或 2" ;;
+    esac
+    read -rp "请选择 hysteria2 UDP 端口 [1/2] (默认 2): " HY2_PORT
+    case "${HY2_PORT:-2}" in
+      1) HY2_PORT=443 ;;
+      2) HY2_PORT=8443 ;;
+      *) error "hysteria2 端口只能选择 1 或 2" ;;
+    esac
     [[ "$XHTTP_H3_PORT" != "$HY2_PORT" ]] || error "分开端口模式下两个端口不能相同"
     ;;
   2)
     QUIC_MODE="shared"
-    DEFAULT_XHTTP_H3_PORT=443
-    read -rp "请输入共用 UDP 端口 [默认 ${DEFAULT_XHTTP_H3_PORT}]: " XHTTP_H3_PORT
-    XHTTP_H3_PORT=${XHTTP_H3_PORT:-$DEFAULT_XHTTP_H3_PORT}
+    echo "  1) 443"
+    echo "  2) 8443"
+    read -rp "请选择共用 UDP 端口 [1/2] (默认 1): " XHTTP_H3_PORT
+    case "${XHTTP_H3_PORT:-1}" in
+      1) XHTTP_H3_PORT=443 ;;
+      2) XHTTP_H3_PORT=8443 ;;
+      *) error "共用端口只能选择 1 或 2" ;;
+    esac
     HY2_PORT=$XHTTP_H3_PORT
     warn "共用端口模式由 hysteria2 处理 XHTTP H3 的 QUIC/TLS"
     ;;
@@ -109,11 +114,6 @@ case "$QUIC_CHOICE" in
     error "端口模式只能选择 1 或 2"
     ;;
 esac
-
-[[ "$XHTTP_H3_PORT" =~ ^[0-9]+$ ]] || error "XHTTP H3 端口必须是数字"
-((XHTTP_H3_PORT >= 1 && XHTTP_H3_PORT <= 65535)) || error "XHTTP H3 端口必须在 1-65535 之间"
-[[ "$HY2_PORT" =~ ^[0-9]+$ ]] || error "hysteria2 端口必须是数字"
-((HY2_PORT >= 1 && HY2_PORT <= 65535)) || error "hysteria2 端口必须在 1-65535 之间"
 
 DEFAULT_HY2_PASSWORD="${HY2_PASSWORD:-$(openssl rand -hex 16)}"
 read -rp "请输入 hysteria2 密码 [默认 ${DEFAULT_HY2_PASSWORD}]: " HY2_PASSWORD

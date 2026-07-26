@@ -4,11 +4,11 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
 MODULES=(
-  extensions/common-nodes/00-env-utils.sh
-  extensions/common-nodes/01-read-existing.sh
-  extensions/common-nodes/02-server-config.sh
-  extensions/common-nodes/03-client-config.sh
-  extensions/common-nodes/04-subscription-output.sh
+  extensions/quic/00-env-utils.sh
+  extensions/quic/01-read-existing.sh
+  extensions/quic/02-server-config.sh
+  extensions/quic/03-client-config.sh
+  extensions/quic/04-subscription-output.sh
 )
 
 OUT_DIR="${OUT_DIR:-$ROOT_DIR/dist}"
