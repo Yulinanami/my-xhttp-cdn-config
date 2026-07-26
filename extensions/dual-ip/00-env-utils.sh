@@ -59,8 +59,8 @@ rawurlencode() {
         encoded+="$char"
         ;;
       *)
-        printf -v hex '%%%02X' "'$char"
-        encoded+="$hex"
+        printf -v hex '%02X' "'$char"
+        encoded+="%${hex: -2}"
         ;;
     esac
   done
