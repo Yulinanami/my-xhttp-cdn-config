@@ -9,34 +9,27 @@ NODE_V6_UP_TAG="%E4%B8%8A%E8%A1%8C%20xhttp%2BReality%20IPv6%20%7C%20%E4%B8%8B%E8
 
 if [[ -n "$BASE_EXTRA_ENC" ]]; then
   BASE_EXTRA_JSON=$(urldecode "$BASE_EXTRA_ENC")
-  NESTED_EXTRA_FIELD=",\"extra\":${BASE_EXTRA_JSON}"
 fi
 
 build_reality_download_extra() {
   local download_ip="$1"
   local download_domain="$2"
-  local download_json extra_json
+  local download_json
 
-  download_json="\"downloadSettings\":{\"address\":\"$(json_escape "$download_ip")\",\"port\":443,\"network\":\"xhttp\",\"security\":\"reality\",\"realitySettings\":{\"show\":false,\"serverName\":\"$(json_escape "$download_domain")\",\"fingerprint\":\"chrome\",\"shortId\":\"$(json_escape "$SHORT_ID")\",\"publicKey\":\"$(json_escape "$PUBLIC_KEY")\"},\"xhttpSettings\":{\"host\":\"\",\"path\":\"$(json_escape "$XHTTP_PATH")\",\"mode\":\"auto\"${NESTED_EXTRA_FIELD}}}"
+  download_json="\"downloadSettings\":{\"address\":\"$(json_escape "$download_ip")\",\"port\":443,\"network\":\"xhttp\",\"security\":\"reality\",\"realitySettings\":{\"show\":false,\"serverName\":\"$(json_escape "$download_domain")\",\"fingerprint\":\"chrome\",\"shortId\":\"$(json_escape "$SHORT_ID")\",\"publicKey\":\"$(json_escape "$PUBLIC_KEY")\"},\"xhttpSettings\":{\"host\":\"\",\"path\":\"$(json_escape "$XHTTP_PATH")\",\"mode\":\"auto\"${BASE_EXTRA_JSON:+,\"extra\":${BASE_EXTRA_JSON}}}}"
 
   if [[ -n "$BASE_EXTRA_JSON" ]]; then
-    extra_json="${BASE_EXTRA_JSON%\}},${download_json}}"
+    rawurlencode "${BASE_EXTRA_JSON%\}},${download_json}}"
   else
-    extra_json="{${download_json}}"
+    rawurlencode "{${download_json}}"
   fi
-
-  rawurlencode "$extra_json"
 }
-
-EXTRA_V4_DOWN=$(build_reality_download_extra "$IPV4_ADDRESS" "$REALITY_DOMAIN_V4")
-EXTRA_V6_DOWN=$(build_reality_download_extra "$IPV6_ADDRESS" "$REALITY_DOMAIN_V6")
-
-LINE_V4_UP="vless://${UUID2}@${IPV4_URI}:443?encryption=${VLESSENC_ENCRYPTION}&security=reality&sni=${REALITY_DOMAIN_V4}&fp=chrome&pbk=${PUBLIC_KEY}&sid=${SHORT_ID}&type=xhttp&path=${XHTTP_PATH}&mode=auto&extra=${EXTRA_V6_DOWN}#${NODE_V4_UP_TAG}"
-LINE_V6_UP="vless://${UUID2}@${IPV6_URI}:443?encryption=${VLESSENC_ENCRYPTION}&security=reality&sni=${REALITY_DOMAIN_V6}&fp=chrome&pbk=${PUBLIC_KEY}&sid=${SHORT_ID}&type=xhttp&path=${XHTTP_PATH}&mode=auto&extra=${EXTRA_V4_DOWN}#${NODE_V6_UP_TAG}"
 
 sed -i "/#${NODE_V4_UP_TAG}\$/d" "$V2RAYN_FILE"
 sed -i "/#${NODE_V6_UP_TAG}\$/d" "$V2RAYN_FILE"
-printf '%s\n%s\n' "$LINE_V4_UP" "$LINE_V6_UP" >> "$V2RAYN_FILE"
+printf '%s\n%s\n' \
+  "vless://${UUID2}@$(format_uri_host "$IPV4_ADDRESS"):443?encryption=${VLESSENC_ENCRYPTION}&security=reality&sni=${REALITY_DOMAIN_V4}&fp=chrome&pbk=${PUBLIC_KEY}&sid=${SHORT_ID}&type=xhttp&path=${XHTTP_PATH}&mode=auto&extra=$(build_reality_download_extra "$IPV6_ADDRESS" "$REALITY_DOMAIN_V6")#${NODE_V4_UP_TAG}" \
+  "vless://${UUID2}@$(format_uri_host "$IPV6_ADDRESS"):443?encryption=${VLESSENC_ENCRYPTION}&security=reality&sni=${REALITY_DOMAIN_V6}&fp=chrome&pbk=${PUBLIC_KEY}&sid=${SHORT_ID}&type=xhttp&path=${XHTTP_PATH}&mode=auto&extra=$(build_reality_download_extra "$IPV4_ADDRESS" "$REALITY_DOMAIN_V4")#${NODE_V6_UP_TAG}" >> "$V2RAYN_FILE"
 chown "$(stat -c '%u:%g' "$USER_HOME")" "$V2RAYN_FILE"
 
 build_download_settings_block() {

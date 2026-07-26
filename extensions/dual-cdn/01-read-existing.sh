@@ -13,8 +13,8 @@ echo ""
 find_client_files
 info "读取已有客户端配置: $USER_HOME"
 
-BASE_LINE=$(grep -F '#xhttp%2Btls%20%E5%8F%8C%E5%90%91CDN' "$V2RAYN_FILE" | head -n1 | tr -d '\r' || true)
-[[ -n "$BASE_LINE" ]] || error "未找到 xhttp+TLS 双向 CDN 节点，无法自动派生 CDN-A 参数"
+BASE_LINE=$(grep -F '#xhttp%2BTLS%2BH2' "$V2RAYN_FILE" | head -n1 | tr -d '\r' || true)
+[[ -n "$BASE_LINE" ]] || error "未找到 xhttp+TLS+H2 节点，无法自动派生 CDN-A 参数"
 
 REALITY_LINE=$(grep -F '#reality%2Bvision' "$V2RAYN_FILE" | head -n1 | tr -d '\r' || true)
 [[ -n "$REALITY_LINE" ]] || error "未找到 reality+vision 节点，无法读取 Reality 域名"

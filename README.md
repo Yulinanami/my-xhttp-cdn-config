@@ -17,7 +17,7 @@
 1. Reality Vision 直连
 2. XHTTP + Reality 上下行不分离
 3. 上行 XHTTP + TLS + CDN，下行 XHTTP + Reality
-4. XHTTP + TLS 双向 CDN
+4. XHTTP + TLS + H2
 5. 上行 XHTTP + Reality，下行 XHTTP + TLS + CDN
 
 ## 安全性
@@ -42,10 +42,11 @@
 4. [ECH配置.md](./docs/4.ECH配置.md)，给 CDN-TLS 节点启用 ECH，按此文档补充客户端配置。
 5. [拓展-上下行不同CDN.md](./docs/6.拓展-上下行不同CDN.md)，可选扩展：上行 CDN-A / 下行 CDN-B。
 6. [拓展-上下行IPv4IPv6.md](./docs/7.拓展-上下行IPv4IPv6.md)，可选扩展：上行 IPv4 / 下行 IPv6。
-7. [拓展-QUIC添加.md](./docs/8.拓展-QUIC添加.md)，可选扩展：VLESS+XHTTP+TLS（H3）/ Hysteria2 直连。
-8. [卸载.md](./docs/9.卸载.md)，卸载指令，用于卸载前面搭建 Xray、Nginx、ACME 和 Hysteria2。
-9. [客户端模板.txt](./客户端模板.txt)，复制到 V2rayN，替换 `YOUR_*` 占位符后使用。
-10. [客户端模板-mihomo.yaml](./客户端模板-mihomo.yaml)，Mihomo内核客户端的配置文件，替换 `YOUR_*` 占位符后导入。
+7. [拓展-XHTTP-H3.md](./docs/8.拓展-XHTTP-H3.md)，可选扩展：XHTTP H3、H2/H3 上下行分离。
+8. [拓展-Hysteria2.md](./docs/9.拓展-Hysteria2.md)，可选扩展：Hysteria2。
+9. [卸载.md](./docs/9.卸载.md)，卸载指令，用于卸载前面搭建 Xray、Nginx、ACME 和 Hysteria2。
+10. [客户端模板.txt](./客户端模板.txt)，复制到 V2rayN，替换 `YOUR_*` 占位符后使用。
+11. [客户端模板-mihomo.yaml](./客户端模板-mihomo.yaml)，Mihomo内核客户端的配置文件，替换 `YOUR_*` 占位符后导入。
 
 ---
 
@@ -154,7 +155,7 @@ bash ~/add-dual-ip.sh
 - 输入：`IPv4 Reality 域名 / IPv6 Reality 域名`
 - 回落：每个新增 Reality 域名单独配置
 
-#### VLESS+XHTTP+TLS（H3）| Hysteria2 直连
+#### XHTTP H3 / H2-H3 上下行分离
 
 Debian / Ubuntu：
 
@@ -173,11 +174,32 @@ curl -fsSL https://github.com/Yulinanami/my-xhttp-cdn-config/releases/latest/dow
 bash ~/add-quic.sh
 ```
 
-- 复用：主脚本的 `Reality 域名 / CDN 域名 / UUID / VLESS Encryption / XHTTP Path / 证书 / 回落方式`；ECH 可选复用，默认关闭
-- 模式：默认分开端口，也可以选择共用端口
-- 分开端口：XHTTP H3 默认 UDP 443，由 Nginx 处理；Hysteria2 默认 UDP 8443
-- 共用端口：两者默认 UDP 443，由 Hysteria2 处理 XHTTP H3 的 QUIC/TLS
-- XHTTP H3：客户端配置地址使用 VPS IP 时直连，改成 CDN 域名或 CDN IP 并使用端口 443 时经过 CDN，如果 XHTTP H3 使用 8443 端口，要走 CDN 的话需要让 CDN 回源到 VPS 的 443 端口
+- 复用：已有 `xhttp+TLS+H2` 节点的域名、UUID、VLESS Encryption、XHTTP Path、xpadding；ECH 可选复用，默认关闭
+- 端口：输入 `1-65535`，默认 443，不能与 Hysteria2 相同
+- TLS：XHTTP H3 由 Nginx 处理
+- 节点：XHTTP H3、上行 H2/下行 H3、上行 H3/下行 H2
+
+#### Hysteria2
+
+Debian / Ubuntu：
+
+```bash
+sudo -i
+curl -fsSL https://github.com/Yulinanami/my-xhttp-cdn-config/releases/latest/download/add-hysteria2.sh -o ~/add-hysteria2.sh
+bash ~/add-hysteria2.sh
+```
+
+Alpine Linux：
+
+```sh
+doas -s
+apk add --no-cache bash curl
+curl -fsSL https://github.com/Yulinanami/my-xhttp-cdn-config/releases/latest/download/add-hysteria2.sh -o ~/add-hysteria2.sh
+bash ~/add-hysteria2.sh
+```
+
+- 端口：输入 `1-65535`，默认 8443，不能与 XHTTP H3 相同
+- 节点：Hysteria2 直连
 
 ---
 
@@ -204,6 +226,7 @@ bash .github/scripts/build-install.sh
 bash .github/scripts/build-dual-cdn.sh
 bash .github/scripts/build-dual-ip.sh
 bash .github/scripts/build-quic.sh
+bash .github/scripts/build-hysteria2.sh
 ```
 
 会在 `dist/` 目录生成：
@@ -213,6 +236,7 @@ bash .github/scripts/build-quic.sh
 - `add-dual-cdn.sh`
 - `add-dual-ip.sh`
 - `add-quic.sh`
+- `add-hysteria2.sh`
 
 ---
 

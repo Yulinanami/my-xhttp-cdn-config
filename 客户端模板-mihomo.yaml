@@ -144,7 +144,7 @@ proxies:
           c-max-reuse-times: "0"
           h-max-reusable-secs: "1800-3000"
 
-  - name: xhttp+TLS 双向 CDN
+  - name: xhttp+TLS+H2
     type: vless
     server: YOUR_CDN_DOMAIN
     port: 443

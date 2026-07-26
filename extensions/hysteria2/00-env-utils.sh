@@ -28,6 +28,12 @@ case "$OS_ID" in
     ;;
 esac
 
+if [[ "$OS_ID" == "alpine" ]]; then
+  NGINX_RESTART_CMD="rc-service nginx restart"
+else
+  NGINX_RESTART_CMD="systemctl restart nginx"
+fi
+
 service_restart() {
   if [[ "$OS_ID" == "alpine" ]]; then
     rc-service "$1" restart || rc-service "$1" start
@@ -58,20 +64,6 @@ rawurlencode() {
   printf '%s' "$encoded"
 }
 
-urldecode() {
-  local data="${1//+/ }"
-  printf '%b' "${data//%/\\x}"
-}
-
-json_escape() {
-  local value="$1"
-  value="${value//\\/\\\\}"
-  value="${value//\"/\\\"}"
-  value="${value//$'\n'/}"
-  value="${value//$'\r'/}"
-  printf '%s' "$value"
-}
-
 get_query_param() {
   local line="$1"
   local key="$2"
@@ -89,12 +81,6 @@ get_query_param() {
     fi
   done
   return 1
-}
-
-extract_uri_user() {
-  local line="$1"
-  line="${line#vless://}"
-  printf '%s' "${line%%@*}"
 }
 
 extract_uri_server() {

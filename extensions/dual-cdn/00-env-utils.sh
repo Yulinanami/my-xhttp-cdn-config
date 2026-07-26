@@ -29,19 +29,17 @@ case "$OS_ID" in
 esac
 
 if [[ "$OS_ID" == "alpine" ]]; then
-  SERVICE_TYPE="openrc"
   NGINX_STOP_CMD="rc-service nginx stop"
   NGINX_START_CMD="rc-service nginx start"
   NGINX_RESTART_CMD="rc-service nginx restart"
 else
-  SERVICE_TYPE="systemd"
   NGINX_STOP_CMD="systemctl stop nginx"
   NGINX_START_CMD="systemctl start nginx"
   NGINX_RESTART_CMD="systemctl restart nginx"
 fi
 
 service_restart() {
-  if [[ "$SERVICE_TYPE" == "openrc" ]]; then
+  if [[ "$OS_ID" == "alpine" ]]; then
     rc-service "$1" restart || rc-service "$1" start
   else
     systemctl reset-failed "$1" >/dev/null 2>&1 || true

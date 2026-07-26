@@ -75,8 +75,6 @@ fi
 
 if [[ "$CDN_ECH_ENABLED" == true ]]; then
   CDN_ECH_QUERY_ENC=$(echo "$CDN_ECH_QUERY" | sed -e 's/%/%25/g' -e 's/+/%2B/g' -e 's/:/%3A/g' -e 's/\//%2F/g')
-  CDN_ECH_URI_PARAM="&ech=${CDN_ECH_QUERY_ENC}"
-  CDN_ECH_TLS_SETTINGS_EXTRA="%2C%22echConfigList%22%3A%22${CDN_ECH_QUERY_ENC}%22"
 fi
 
 info "生成 VLESS Encryption 密钥..."
@@ -91,12 +89,10 @@ if [[ "$IP_CHOICE" == "2" ]]; then
   VPS_IP=$(curl -6 -s --max-time 5 ip.sb)
   [[ -z "$VPS_IP" ]] && error "无法获取 IPv6 地址"
   VPS_IP_URI="[${VPS_IP}]"
-  VPS_IP_ENC=${VPS_IP//:/%3A}
 else
   VPS_IP=$(curl -4 -s --max-time 5 ip.sb)
   [[ -z "$VPS_IP" ]] && error "无法获取 IPv4 地址"
   VPS_IP_URI="${VPS_IP}"
-  VPS_IP_ENC="${VPS_IP}"
 fi
 
 info "UUID1 (Vision): $UUID1"

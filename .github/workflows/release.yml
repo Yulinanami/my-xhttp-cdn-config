@@ -29,6 +29,9 @@ jobs:
       - name: Build QUIC extension
         run: bash .github/scripts/build-quic.sh
 
+      - name: Build Hysteria2 extension
+        run: bash .github/scripts/build-hysteria2.sh
+
       - name: Upload workflow artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -39,6 +42,7 @@ jobs:
             dist/add-dual-cdn.sh
             dist/add-dual-ip.sh
             dist/add-quic.sh
+            dist/add-hysteria2.sh
 
       - name: Publish GitHub Release
         if: startsWith(github.ref, 'refs/tags/')
@@ -50,3 +54,4 @@ jobs:
             dist/add-dual-cdn.sh
             dist/add-dual-ip.sh
             dist/add-quic.sh
+            dist/add-hysteria2.sh

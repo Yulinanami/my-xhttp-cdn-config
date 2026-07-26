@@ -16,10 +16,9 @@ prefer_ipv4_for_acme() {
 }
 
 ACME_CERT_HOME="/root/.acme.sh/${REALITY_DOMAIN}_ecc"
-ACME_CERT_CONF="${ACME_CERT_HOME}/${REALITY_DOMAIN}.conf"
 
 have_existing_dual_cert() {
-  [[ -f "$ACME_CERT_CONF" ]] || return 1
+  [[ -f "$ACME_CERT_HOME/${REALITY_DOMAIN}.conf" ]] || return 1
   [[ -f "$ACME_CERT_HOME/fullchain.cer" ]] || return 1
   [[ -f "$ACME_CERT_HOME/${REALITY_DOMAIN}.key" ]] || return 1
 

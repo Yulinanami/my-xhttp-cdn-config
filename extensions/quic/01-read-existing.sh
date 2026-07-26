@@ -2,11 +2,11 @@
 # 读取已有节点参数
 # ==================================================
 
-echo -e "\n${CYAN}[+] 添加扩展模式：vless+xhttp+tls (H3) | hysteria2 直连${NC}\n"
+echo -e "\n${CYAN}[+] 添加扩展模式：XHTTP H3 / H2-H3 上下行分离${NC}\n"
 echo -e "${YELLOW}[+] 前置条件${NC}"
 echo "  1. 已经成功运行主脚本"
-echo "  2. 默认分开端口：Nginx 处理 XHTTP H3，hysteria2 使用独立端口"
-echo "  3. 可选共用端口：hysteria2 处理 XHTTP H3 的 QUIC/TLS"
+echo "  2. Nginx 已启用 HTTP/3"
+echo "  3. XHTTP H3 使用的 UDP 端口未被其他服务占用"
 echo ""
 
 find_client_files
@@ -14,8 +14,8 @@ info "读取已有客户端配置: $USER_HOME"
 
 BASE_LINE=$(grep -F '#xhttp%2BReality%20%E4%B8%8A%E4%B8%8B%E8%A1%8C%E4%B8%8D%E5%88%86%E7%A6%BB' "$V2RAYN_FILE" | head -n1 | tr -d '\r' || true)
 [[ -n "$BASE_LINE" ]] || error "未找到 xhttp+Reality 上下行不分离节点，无法自动读取参数"
-CDN_LINE=$(grep -F '#xhttp%2Btls%20%E5%8F%8C%E5%90%91CDN' "$V2RAYN_FILE" | head -n1 | tr -d '\r' || true)
-[[ -n "$CDN_LINE" ]] || error "未找到 xhttp+tls 双向 CDN 节点，无法自动读取 CDN 域名"
+CDN_LINE=$(grep -F '#xhttp%2BTLS%2BH2' "$V2RAYN_FILE" | head -n1 | tr -d '\r' || true)
+[[ -n "$CDN_LINE" ]] || error "未找到 xhttp+TLS+H2 节点，无法自动读取参数"
 
 BASE_SERVER=$(strip_ipv6_brackets "$(extract_uri_server "$BASE_LINE")")
 UUID2=$(extract_uri_user "$BASE_LINE")
@@ -48,83 +48,19 @@ if [[ -n "$XHTTP_EXTRA" ]]; then
     error "读取 xpadding 配置失败"
 fi
 
-[[ -f /etc/xhttp-cdn/fallback.env ]] || error "未找到主脚本回落配置，请重新运行主脚本"
-# shellcheck disable=SC1090
-. /etc/xhttp-cdn/fallback.env
-
-case "$FALLBACK_MODE" in
-  proxy)
-    [[ -n "$REALITY_FALLBACK_ORIGIN" ]] || error "主脚本 Reality 回落网站为空，请重新运行主脚本"
-    ;;
-  static)
-    [[ -f "${STATIC_SITE_DIR}/${REALITY_DOMAIN}/index.html" ]] || error "未找到 Reality 域名页面"
-    ;;
-  *)
-    error "主脚本回落方式无效，请重新运行主脚本"
-    ;;
-esac
-
-# 读取历史扩展参数，保证重复运行时保持一致
-QUIC_STATE_DIR="/etc/xhttp-cdn"
-QUIC_STATE_FILE="${QUIC_STATE_DIR}/quic.env"
-if [[ -f "$QUIC_STATE_FILE" ]]; then
-  # shellcheck disable=SC1090
-  . "$QUIC_STATE_FILE"
+read -rp "请输入 XHTTP H3 UDP 端口 [1-65535] (默认 443): " XHTTP_H3_PORT
+XHTTP_H3_PORT=${XHTTP_H3_PORT:-443}
+if [[ ! "$XHTTP_H3_PORT" =~ ^[0-9]+$ ]] ||
+   (( XHTTP_H3_PORT < 1 || XHTTP_H3_PORT > 65535 )); then
+  error "XHTTP H3 UDP 端口无效，请输入 1-65535 的整数"
+fi
+if [[ -f /etc/hysteria/config.yaml ]] &&
+   grep -Eq "^[[:space:]]*listen:[[:space:]]*:${XHTTP_H3_PORT}[[:space:]]*$" /etc/hysteria/config.yaml; then
+  error "UDP ${XHTTP_H3_PORT} 已被 Hysteria2 使用"
 fi
 
-echo -e "${YELLOW}[+] QUIC 端口模式${NC}"
-echo "  1) 分开端口（默认，Nginx 处理 XHTTP H3）"
-echo "  2) 共用端口（hysteria2 处理 XHTTP H3）"
-read -rp "请选择端口模式 [1/2] (默认 1): " QUIC_CHOICE
-QUIC_CHOICE=${QUIC_CHOICE:-1}
-
-case "$QUIC_CHOICE" in
-  1)
-    QUIC_MODE="separate"
-    echo "  1) 443"
-    echo "  2) 8443"
-    read -rp "请选择 XHTTP H3 UDP 端口 [1/2] (默认 1): " XHTTP_H3_PORT
-    case "${XHTTP_H3_PORT:-1}" in
-      1) XHTTP_H3_PORT=443 ;;
-      2) XHTTP_H3_PORT=8443 ;;
-      *) error "XHTTP H3 端口只能选择 1 或 2" ;;
-    esac
-    read -rp "请选择 hysteria2 UDP 端口 [1/2] (默认 2): " HY2_PORT
-    case "${HY2_PORT:-2}" in
-      1) HY2_PORT=443 ;;
-      2) HY2_PORT=8443 ;;
-      *) error "hysteria2 端口只能选择 1 或 2" ;;
-    esac
-    [[ "$XHTTP_H3_PORT" != "$HY2_PORT" ]] || error "分开端口模式下两个端口不能相同"
-    ;;
-  2)
-    QUIC_MODE="shared"
-    echo "  1) 443"
-    echo "  2) 8443"
-    read -rp "请选择共用 UDP 端口 [1/2] (默认 1): " XHTTP_H3_PORT
-    case "${XHTTP_H3_PORT:-1}" in
-      1) XHTTP_H3_PORT=443 ;;
-      2) XHTTP_H3_PORT=8443 ;;
-      *) error "共用端口只能选择 1 或 2" ;;
-    esac
-    HY2_PORT=$XHTTP_H3_PORT
-    warn "共用端口模式由 hysteria2 处理 XHTTP H3 的 QUIC/TLS"
-    ;;
-  *)
-    error "端口模式只能选择 1 或 2"
-    ;;
-esac
-
-DEFAULT_HY2_PASSWORD="${HY2_PASSWORD:-$(openssl rand -hex 16)}"
-read -rp "请输入 hysteria2 密码 [默认 ${DEFAULT_HY2_PASSWORD}]: " HY2_PASSWORD
-HY2_PASSWORD=${HY2_PASSWORD:-$DEFAULT_HY2_PASSWORD}
-[[ "$HY2_PASSWORD" =~ ^[A-Za-z0-9._~-]+$ ]] || error "hysteria2 密码仅支持字母、数字与 . _ ~ -"
-
-info "VPS IP:         $BASE_SERVER"
-info "Reality 域名:   $REALITY_DOMAIN"
-info "CDN 域名:       $CDN_DOMAIN"
-info "XHTTP Path:      $XHTTP_PATH"
-info "XHTTP H3:       UDP $XHTTP_H3_PORT"
-info "hysteria2:      UDP $HY2_PORT"
-info "端口模式:       $QUIC_MODE"
+info "VPS IP:       $BASE_SERVER"
+info "CDN 域名:     $CDN_DOMAIN"
+info "XHTTP Path:   $XHTTP_PATH"
+info "XHTTP H3:     UDP $XHTTP_H3_PORT"
 echo ""

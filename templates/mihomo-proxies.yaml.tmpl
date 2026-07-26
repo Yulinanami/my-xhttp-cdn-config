@@ -81,7 +81,7 @@ proxies:
           c-max-reuse-times: "0"
           h-max-reusable-secs: "1800-3000"${MIHOMO_REUSE_KEEPALIVE_DOWNLOAD}
 
-  - name: xhttp+TLS 双向 CDN
+  - name: xhttp+TLS+H2
     type: vless
     server: ${CDN_DOMAIN}
     port: 443

@@ -6,7 +6,6 @@ command -v acme.sh >/dev/null 2>&1 || error "未找到 acme.sh，请先运行主
 command -v nginx >/dev/null 2>&1 || error "未找到 nginx，请先运行主脚本"
 
 ACME_CERT_HOME="/root/.acme.sh/${REALITY_DOMAIN}_ecc"
-ACME_CERT_CONF="${ACME_CERT_HOME}/${REALITY_DOMAIN}.conf"
 ACME_LISTEN_ARGS=()
 [[ "$VPS_SERVER" == \[*\] ]] && ACME_LISTEN_ARGS=(--listen-v6)
 NGINX_CONF="/etc/nginx/nginx.conf"
@@ -44,7 +43,7 @@ for domain in "${CERT_DOMAINS[@]}"; do
 done
 
 cert_has_all_domains() {
-  [[ -f "$ACME_CERT_CONF" ]] || return 1
+  [[ -f "$ACME_CERT_HOME/${REALITY_DOMAIN}.conf" ]] || return 1
   [[ -f "$ACME_CERT_HOME/fullchain.cer" ]] || return 1
   [[ -f "$ACME_CERT_HOME/${REALITY_DOMAIN}.key" ]] || return 1
 

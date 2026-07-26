@@ -7,7 +7,6 @@ command -v nginx >/dev/null 2>&1 || error "未找到 nginx，请先运行主脚�
 command -v xray >/dev/null 2>&1 || error "未找到 xray，请先运行主脚本"
 
 ACME_CERT_HOME="/root/.acme.sh/${REALITY_DOMAIN}_ecc"
-ACME_CERT_CONF="${ACME_CERT_HOME}/${REALITY_DOMAIN}.conf"
 NGINX_CONF="/etc/nginx/nginx.conf"
 XRAY_CONF="/usr/local/etc/xray/config.json"
 [[ -f "$NGINX_CONF" ]] || error "未找到 $NGINX_CONF"
@@ -40,7 +39,7 @@ add_cert_domain "$REALITY_DOMAIN_V4"
 add_cert_domain "$REALITY_DOMAIN_V6"
 
 cert_has_all_domains() {
-  [[ -f "$ACME_CERT_CONF" ]] || return 1
+  [[ -f "$ACME_CERT_HOME/${REALITY_DOMAIN}.conf" ]] || return 1
   [[ -f "$ACME_CERT_HOME/fullchain.cer" ]] || return 1
   [[ -f "$ACME_CERT_HOME/${REALITY_DOMAIN}.key" ]] || return 1
 

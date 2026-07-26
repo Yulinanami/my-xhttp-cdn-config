@@ -25,7 +25,7 @@ PUBLIC_KEY=$(get_query_param "$BASE_LINE" "pbk" || true)
 SHORT_ID=$(get_query_param "$BASE_LINE" "sid" || true)
 BASE_EXTRA_ENC=$(get_query_param "$BASE_LINE" "extra" || true)
 
-CDN_LINE=$(grep -F '#xhttp%2Btls%20%E5%8F%8C%E5%90%91CDN' "$V2RAYN_FILE" | head -n1 | tr -d '\r' || true)
+CDN_LINE=$(grep -F '#xhttp%2BTLS%2BH2' "$V2RAYN_FILE" | head -n1 | tr -d '\r' || true)
 if [[ -n "$CDN_LINE" ]]; then
   DEFAULT_CDN_DOMAIN=$(get_query_param "$CDN_LINE" "host" || true)
   [[ -n "$DEFAULT_CDN_DOMAIN" ]] || DEFAULT_CDN_DOMAIN=$(get_query_param "$CDN_LINE" "sni" || true)
@@ -45,28 +45,23 @@ fi
 
 [[ "$FALLBACK_MODE" == "proxy" || "$FALLBACK_MODE" == "static" ]] || error "主脚本回落方式无效，请重新运行主脚本"
 
-if [[ "$BASE_SERVER" == *:* ]]; then
-  DEFAULT_IPV6="$BASE_SERVER"
-else
-  DEFAULT_IPV4="$BASE_SERVER"
-fi
-
 if command -v curl >/dev/null 2>&1; then
   IPV4_ADDRESS=$(curl -4 -s --max-time 5 ip.sb || true)
   IPV6_ADDRESS=$(curl -6 -s --max-time 5 ip.sb || true)
 fi
 
-IPV4_ADDRESS=${IPV4_ADDRESS:-$DEFAULT_IPV4}
-IPV6_ADDRESS=${IPV6_ADDRESS:-$DEFAULT_IPV6}
+if [[ "$BASE_SERVER" == *:* ]]; then
+  IPV6_ADDRESS=${IPV6_ADDRESS:-$BASE_SERVER}
+else
+  IPV4_ADDRESS=${IPV4_ADDRESS:-$BASE_SERVER}
+fi
+
 IPV6_ADDRESS=$(strip_ipv6_brackets "$IPV6_ADDRESS")
 
 [[ -n "$IPV4_ADDRESS" ]] || error "IPv4 地址不能为空"
 [[ "$IPV4_ADDRESS" != *:* ]] || error "IPv4 地址格式错误"
 [[ -n "$IPV6_ADDRESS" ]] || error "IPv6 地址不能为空"
 [[ "$IPV6_ADDRESS" == *:* ]] || error "IPv6 地址格式错误"
-
-IPV4_URI=$(format_uri_host "$IPV4_ADDRESS")
-IPV6_URI=$(format_uri_host "$IPV6_ADDRESS")
 
 read -rp "请输入 IPv4 Reality 域名: " REALITY_DOMAIN_V4
 [[ -n "$REALITY_DOMAIN_V4" ]] || error "IPv4 Reality 域名不能为空"
