@@ -37,8 +37,6 @@ jobs:
         with:
           name: installers
           path: |
-            config.env
-            install-config.sh
             dist/install.sh
             dist/install-xpadding.sh
             dist/add-dual-cdn.sh
@@ -51,8 +49,6 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            config.env
-            install-config.sh
             dist/install.sh
             dist/install-xpadding.sh
             dist/add-dual-cdn.sh
