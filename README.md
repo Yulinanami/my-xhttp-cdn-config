@@ -1,14 +1,16 @@
 # XHTTP + CDN 上下行分离配置指南
 
-> **强烈建议**：关于XHTTP的原理，上下行分离，以及带来的抗审查优势：https://habr.com/en/articles/990208/
-
-这个仓库用于整理一套443端口上基于 Xray-core 的 XHTTP + CDN 搭建方案，覆盖环境准备、服务端配置和客户端模板三部分内容。
-支持小火箭、Xray和Mihomo客户端，支持IPv4和IPv6。
-
+> **推荐文章1**：关于XHTTP的原理，上下行分离，以及带来的抗审查优势：https://habr.com/en/articles/990208/
+> 
+> **推荐文章2**：关于DNS泄露：https://github.com/meooxx/blog/issues/31
+>
 > **注意**：教程使用 VLESS Encryption，客户端（V2rayN、Mihomo客户端）也需要更新到支持 vlessenc / xhttp 的版本。
 >
 > **注意**：V2rayN v7.19.5+版本 TUN 模式下链路不稳定，可能需要启用旧版TUN保护选项。
 > PR：https://github.com/2dust/v2rayN/pull/9005
+
+这个仓库用于整理一套443端口上基于 Xray-core 的 XHTTP + CDN 搭建方案，覆盖环境准备、服务端配置和客户端模板三部分内容。
+支持小火箭、Xray和Mihomo客户端，支持IPv4和IPv6。
 
 ## 模式
 
@@ -50,10 +52,10 @@
 
 ---
 
-## 一键部署
+## 脚本部署
 
 > **提示**：脚本可以重新执行即可更新域名、回落网站等参数。
-> **前置条件**：运行脚本前需在 Cloudflare 完成以下设置：
+> 运行脚本前需在 Cloudflare 完成以下设置：
 >
 > 1. Reality 域名 DNS → 仅 DNS（灰色云朵）
 > 2. CDN 域名 DNS → 代理开启（橙色云朵）
@@ -86,7 +88,7 @@ bash ~/install.sh
 
 ---
 
-### 带 xpadding 的 XHTTP（ECH 可选）
+### 带 xpadding 的 XHTTP
 
 > **提示**：xpadding 默认开启；ECH 可选，默认关闭
 > **注意**：需要 Xray 内核版本≥`26.2.6`，Mihomo 内核版本≥`1.19.24`。
