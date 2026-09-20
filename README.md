@@ -46,7 +46,7 @@
 6. [拓展-上下行IPv4IPv6.md](./docs/7.拓展-上下行IPv4IPv6.md)：上行 IPv4 / 下行 IPv6。
 7. [拓展-XHTTP-H3.md](./docs/8.拓展-XHTTP-H3.md)：XHTTP H3、H2/H3 上下行分离。
 8. [拓展-Hysteria2.md](./docs/9.拓展-Hysteria2.md)：Hysteria2。
-9. [卸载.md](./docs/9.卸载.md)：卸 Xray、Nginx、ACME、Hysteria2。
+9. [卸载.md](./docs/卸载.md)：卸 Xray、Nginx、ACME、Hysteria2。
 10. [客户端模板.txt](./客户端模板.txt)：复制到 V2rayN，替换 `YOUR_*`。
 11. [客户端模板-mihomo.yaml](./客户端模板-mihomo.yaml)：替换 `YOUR_*` 后导入 Mihomo。
 

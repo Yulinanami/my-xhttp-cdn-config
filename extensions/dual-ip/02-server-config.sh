@@ -86,7 +86,7 @@ append_reality_block() {
 
   cat <<EOF
     server {
-        listen       8003 ssl;
+        listen       127.0.0.1:8003 ssl;
         http2        on;
         server_name  ${domain};
 

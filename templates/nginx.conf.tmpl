@@ -48,7 +48,7 @@ http {
         default "\$proxy_forwarded_elem";
     }
     server {
-        listen       8003 ssl;
+        listen       127.0.0.1:8003 ssl;
         http2        on;
         server_name  ${REALITY_DOMAIN};
 
@@ -73,7 +73,7 @@ $(nginx_fallback_config "$REALITY_DOMAIN" "$REALITY_FALLBACK_ORIGIN" "$REALITY_F
     }
 
     server {
-        listen       8003 ssl;
+        listen       127.0.0.1:8003 ssl;
         http2        on;
         server_name  ${CDN_DOMAIN};
 
