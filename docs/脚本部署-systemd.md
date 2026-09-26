@@ -1,6 +1,6 @@
 # 脚本部署（systemd）
 
-用 `systemctl` 的系统看这份（Debian / Ubuntu / CentOS / RHEL / Fedora / openSUSE / SLES 等）。
+用于 systemd Linux 发行版的部署（Debian / Ubuntu / CentOS / RHEL / Fedora / openSUSE / SLES 等）。
 
 在 VPS 上执行：
 
@@ -19,6 +19,7 @@ bash ~/install.sh
 ## 2. 带 xpadding 的 XHTTP
 
 > **提示**：xpadding 默认开启；ECH 可选，默认关闭
+> 
 > **注意**：需要 Xray 内核版本≥`26.2.6`，Mihomo 内核版本≥`1.19.24`。
 
 ```bash
@@ -31,7 +32,7 @@ bash ~/install-xpadding.sh
 
 ## 扩展脚本
 
-主脚本跑完再加。UUID / Path / VLESS Encryption 沿用，客户端配置和订阅一起改。
+使用主脚本部署完成基础配置后，可以按需选择运行拓展脚本，这会在原有配置上加入新的模式。
 
 ### 1. 上行 CDN-A | 下行 CDN-B
 
@@ -41,7 +42,7 @@ curl -fsSL https://github.com/Yulinanami/my-xhttp-cdn-config/releases/latest/dow
 bash ~/add-dual-cdn.sh
 ```
 
-- 同步：`xpadding`；ECH 可选复用，默认关闭
+- 复用：`xpadding`；ECH 可选复用，默认关闭
 - 输入：`CDN-A / CDN-B`
 - 回落：每个新增 CDN 域名单独配置
 
@@ -53,7 +54,7 @@ curl -fsSL https://github.com/Yulinanami/my-xhttp-cdn-config/releases/latest/dow
 bash ~/add-dual-ip.sh
 ```
 
-- 同步：`xpadding`
+- 复用：`xpadding`
 - 输入：`IPv4 Reality 域名 / IPv6 Reality 域名`
 - 回落：每个新增 Reality 域名单独配置
 

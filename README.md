@@ -4,9 +4,7 @@
 > 
 > **推荐文章2**：DNS 泄露：https://github.com/meooxx/blog/issues/31
 >
-> **注意**：教程用 VLESS Encryption，客户端（V2rayN、Mihomo）也要能用 vlessenc / xhttp。
->
-> **注意**：V2rayN v7.19.5+ 的 TUN 模式可能不稳，可以打开旧版 TUN 保护。
+> **注意**：V2rayN v7.19.5+ 的 TUN 模式可能不稳定导致XHTTP节点无法使用，需要打开旧版 TUN 保护。
 > PR：https://github.com/2dust/v2rayN/pull/9005
 
 这个仓库记录 443 端口上用 Xray-core 搭 XHTTP + CDN 的步骤，包括环境准备、服务端配置和客户端模板。
@@ -24,10 +22,10 @@
 
 ## 安全性
 
-- VLESS Encryption：防止 CDN 中间人看到流量内容
+- VLESS Encryption：防止 CDN 中间人看到未加密的 http 流量（如果有的话）
 - 只有过 CDN 的 XHTTP 入站开 vlessenc，Vision 直连不用
-- 回落可以反向代理网站，也可以用上传的 `dist` 页面
-- `xpadding`：绕过 CDN 检测
+- 回落可以反向代理网站，也可以用上传的 `index.html` 静态页面
+- `xpadding`：绕过 CDN 潜在的检测
 - `ECH`：加密 TLS 握手里的 SNI
 
 ## 流程图（去程 + 回程）
@@ -39,7 +37,7 @@
 按这个顺序做：
 
 1. [环境配置.md](./docs/1.环境配置.md)：Cloudflare、Xray、证书、Nginx。
-2. [文件配置.md](./docs/2.文件配置.md)：Nginx 和 Xray 配置，然后测试、重启。
+2. [文件配置.md](./docs/2.文件配置.md)：Nginx 和 Xray 配置。
 3. [xpadding配置.md](./docs/3.xpadding配置.md)：给 Xray / v2rayN / Mihomo 加 xpadding。
 4. [ECH配置.md](./docs/4.ECH配置.md)：给 CDN-TLS 节点加 ECH。
 5. [拓展-上下行不同CDN.md](./docs/6.拓展-上下行不同CDN.md)：上行 CDN-A / 下行 CDN-B。
@@ -54,8 +52,8 @@
 
 ## 脚本部署
 
-> **提示**：脚本可以再跑一遍，用来改域名、回落网站。
-> 跑脚本前先在 Cloudflare 做好这些：
+> **提示**：脚本可以重复运行生成新的部署配置。
+> 运行脚本前先在 Cloudflare 完成这些：
 >
 > 1. Reality 域名 DNS → 仅 DNS（灰色云朵）
 > 2. CDN 域名 DNS → 代理开启（橙色云朵）
@@ -66,7 +64,7 @@
 虽然脚本会生成默认 `index.html`，但是最好换成更丰富完整的页面。
 将 `dist` 文件夹上传到 `/var/www/`，每个入口域名使用独立的 `/var/www/dist/<域名>/index.html`；可用 [SingleFile](https://chromewebstore.google.com/detail/singlefile/mpiodijhokgodhhofbcjdecpffjipkle?hl=zh-CN&utm_source=ext_sidebar) 抓取网页。
 
-命令按系统分：
+根据不同类型的 Linux 发行版来选择部署指令：
 
 1. [systemd 发行版（Debian / Ubuntu 等大部分发行版）](./docs/脚本部署-systemd.md)
 2. [Alpine Linux](./docs/脚本部署-Alpine.md)
@@ -79,17 +77,15 @@
 
 - `~/client-config.txt`：V2RayN / Shadowrocket 节点
 - `~/client-config-mihomo-full.yaml`：Mihomo 完整分流配置
-- `~/client-config-mihomo-nodes.yaml`：Mihomo 纯节点配置
+- `~/client-config-mihomo-nodes.yaml`：Mihomo 纯节点配置（如果你有自己的分流配置，可以使用这个）
 - `~/subscription-links.txt`：订阅链接汇总
 - `~/subscription-*.png`：订阅二维码
-
-已经有 Mihomo 配置的，用 `mihomo-nodes.yaml`。
 
 ---
 
 ## 个人开发与发布
 
-改完模块或模板后，在仓库根目录跑这些命令拼安装脚本：
+改完模块或模板后，在仓库根目录执行这些命令生成新的安装脚本：
 
 ```bash
 bash .github/scripts/build-install.sh
@@ -99,7 +95,7 @@ bash .github/scripts/build-quic.sh
 bash .github/scripts/build-hysteria2.sh
 ```
 
-会在 `dist/` 目录生成：
+这会在 `dist/` 目录生成：
 
 - `install.sh`
 - `install-xpadding.sh`
