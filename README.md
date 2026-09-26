@@ -24,7 +24,7 @@
 
 ## 安全性
 
-- VLESS Encryption：防止 CDN 中间人看到流量内容
+- VLESS Encryption：防止 CDN 中间人看到未加密的 http 流量（如果有的话）
 - 只有过 CDN 的 XHTTP 入站开 vlessenc，Vision 直连不用
 - 回落可以反向代理网站，也可以用上传的 `dist` 页面
 - `xpadding`：绕过 CDN 检测
@@ -39,7 +39,7 @@
 按这个顺序做：
 
 1. [环境配置.md](./docs/1.环境配置.md)：Cloudflare、Xray、证书、Nginx。
-2. [文件配置.md](./docs/2.文件配置.md)：Nginx 和 Xray 配置，然后测试、重启。
+2. [文件配置.md](./docs/2.文件配置.md)：Nginx 和 Xray 配置。
 3. [xpadding配置.md](./docs/3.xpadding配置.md)：给 Xray / v2rayN / Mihomo 加 xpadding。
 4. [ECH配置.md](./docs/4.ECH配置.md)：给 CDN-TLS 节点加 ECH。
 5. [拓展-上下行不同CDN.md](./docs/6.拓展-上下行不同CDN.md)：上行 CDN-A / 下行 CDN-B。
@@ -54,8 +54,8 @@
 
 ## 脚本部署
 
-> **提示**：脚本可以再跑一遍，用来改域名、回落网站。
-> 跑脚本前先在 Cloudflare 做好这些：
+> **提示**：脚本可以重复运行生成新的部署配置。
+> 运行脚本前先在 Cloudflare 完成这些：
 >
 > 1. Reality 域名 DNS → 仅 DNS（灰色云朵）
 > 2. CDN 域名 DNS → 代理开启（橙色云朵）
@@ -79,17 +79,15 @@
 
 - `~/client-config.txt`：V2RayN / Shadowrocket 节点
 - `~/client-config-mihomo-full.yaml`：Mihomo 完整分流配置
-- `~/client-config-mihomo-nodes.yaml`：Mihomo 纯节点配置
+- `~/client-config-mihomo-nodes.yaml`：Mihomo 纯节点配置（如果你有自己的分流配置，可以使用这个）
 - `~/subscription-links.txt`：订阅链接汇总
 - `~/subscription-*.png`：订阅二维码
-
-已经有 Mihomo 配置的，用 `mihomo-nodes.yaml`。
 
 ---
 
 ## 个人开发与发布
 
-改完模块或模板后，在仓库根目录跑这些命令拼安装脚本：
+改完模块或模板后，在仓库根目录跑这些命令生成新的安装脚本：
 
 ```bash
 bash .github/scripts/build-install.sh

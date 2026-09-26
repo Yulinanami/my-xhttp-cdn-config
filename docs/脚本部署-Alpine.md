@@ -1,6 +1,6 @@
 # 脚本部署（Alpine Linux）
 
-Alpine 用 OpenRC（`rc-service`），不用 `systemctl`。先装 `bash` 和 `curl`。
+Alpine 需要先安装 `bash` 和 `curl`。
 
 在 VPS 上执行：
 

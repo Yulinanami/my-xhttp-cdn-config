@@ -1,6 +1,6 @@
 # 脚本部署（systemd）
 
-用 `systemctl` 的系统看这份（Debian / Ubuntu / CentOS / RHEL / Fedora / openSUSE / SLES 等）。
+用于 systemd Linux 发行版的部署（Debian / Ubuntu / CentOS / RHEL / Fedora / openSUSE / SLES 等）。
 
 在 VPS 上执行：
 
