@@ -34,7 +34,7 @@
 
 ## 手动部署（以Ubuntu24.04为例）
 
-按这个顺序做：
+按以下顺序进行操作部署：
 
 1. [环境配置.md](./docs/1.环境配置.md)：Cloudflare、Xray、证书、Nginx。
 2. [文件配置.md](./docs/2.文件配置.md)：Nginx 和 Xray 配置。
@@ -68,6 +68,12 @@
 
 1. [systemd 发行版（Debian / Ubuntu 等大部分发行版）](./docs/脚本部署-systemd.md)
 2. [Alpine Linux](./docs/脚本部署-Alpine.md)
+
+因为 XHTTP-H2 和 XHTTP-H3 的客户端配置 SNI 填的是过 CDN 的域名，所以可以选择填写不同的客户端的 IP 地址 / server 配置 ，让它们走直连还是过 CDN：
+1. 过CDN：填写 CDN 域名或者 CDN 的 IP 地址。
+2. 直连：填写服务器的 IP 地址。
+
+当然，对于 XHTTP 上行和下行配置里的 IP 地址和 server 配置，你同样也可以使用上面的方式来选择上下行是否走直连和过 CDN。 
 
 ---
 
